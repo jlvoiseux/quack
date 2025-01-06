@@ -1,5 +1,8 @@
 .idea/*
-cmake-build-debug/*
+cmake-build-debug-visual-studio/*
 venv/*
-unify.py
-unified_output.txt
+unify/*
+.clang-tidy
+.clang-format
+bin/*
+assets/*

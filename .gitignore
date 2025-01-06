@@ -1,5 +1,5 @@
 .idea
 cmake-build-*
 venv
-unify.py
-unified_output.txt
+unify
+bin
