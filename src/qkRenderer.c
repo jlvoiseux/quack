@@ -96,19 +96,6 @@ void qkRendererClear(qkRenderer* renderer)
 	}
 }
 
-void qkRendererDrawPixel(qkRenderer* renderer, int x, int y, float z, uint32_t color)
-{
-	if (x < 0 || x >= renderer->width || y < 0 || y >= renderer->height)
-		return;
-
-	int index = y * renderer->width + x;
-	if (z < renderer->zBuffer[index])
-	{
-		renderer->frameBuffer[index] = color;
-		renderer->zBuffer[index]	 = z;
-	}
-}
-
 void qkRendererDrawTriangle(
 	qkRenderer* renderer, const qkVec3* v1, const qkVec3* v2, const qkVec3* v3, float texU1, float texV1, float texU2, float texV2, float texU3, float texV3, const qkTexture* texture)
 {
