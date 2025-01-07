@@ -28,9 +28,9 @@ static void qkCameraUp(const qkCamera* camera, qkVec3* out)
 
 void qkCameraInit(qkCamera* camera)
 {
-	camera->position = qkVec3Create(0, 0, -5);
-	camera->yaw		 = 0;
-	camera->pitch	 = 0;
+	camera->position = qkVec3Create(109.f, 0.8f, 25.5f);
+	camera->yaw		 = -2.9f;
+	camera->pitch	 = 0.38f;
 	camera->fov		 = QK_PI_4;
 	camera->nearZ	 = 0.1f;
 	camera->farZ	 = 100.0f;

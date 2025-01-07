@@ -43,7 +43,7 @@ add_executable(quack
         src/qkModel.c
         src/qkCamera.c
         src/qkTexture.c
-        include/quack/qkConstants.h
+        src/qkPerformance.c
 )
 
 target_include_directories(quack

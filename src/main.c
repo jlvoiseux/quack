@@ -1,5 +1,6 @@
 #include "quack/qkCamera.h"
 #include "quack/qkModel.h"
+#include "quack/qkPerformance.h"
 #include "quack/qkRenderer.h"
 #include "quack/qkTexture.h"
 
@@ -33,6 +34,9 @@ int main(int argc, char* argv[])
 
 	qkCamera camera = {0};
 	qkCameraInit(&camera);
+
+	qkPerformance perf = {0};
+	qkPerformanceInit(&perf);
 
 	int		  running = 1;
 	SDL_Event event;
@@ -134,11 +138,13 @@ int main(int argc, char* argv[])
 		}
 
 		qkRendererPresent(&renderer);
+		qkPerformanceUpdate(&perf);
 	}
 
 	qkTextureDestroy(&texture);
 	qkModelDestroy(&model);
 	qkRendererDestroy(&renderer);
+	qkPerformanceDestroy(&perf);
 
 	return 0;
 }
