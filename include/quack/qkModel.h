@@ -2,31 +2,28 @@
 
 #include "quack/math/qkVec3.h"
 
-#include <string>
-#include <vector>
-
-struct qkModel
+typedef struct qkVertex
 {
-	struct Vertex
-	{
-		qkVec3 position;
-		float  texU;
-		float  texV;
-	};
+	qkVec3 position;
+	float  texU;
+	float  texV;
+} qkVertex;
 
-	struct Triangle
-	{
-		int v1;
-		int v2;
-		int v3;
-	};
+typedef struct qkTriangle
+{
+	int v1;
+	int v2;
+	int v3;
+} qkTriangle;
 
-	qkModel(const char* filename);
-	~qkModel();
+typedef struct qkModel
+{
+	qkVertex*	vertices;
+	size_t		vertexCount;
+	qkTriangle* triangles;
+	size_t		triangleCount;
+	void*		gltfData;
+} qkModel;
 
-	std::vector<Vertex>	  vertices;
-	std::vector<Triangle> triangles;
-
-private:
-	void* m_gltfData;
-};
+int	 qkModelLoad(const char* filename, qkModel* out);
+void qkModelDestroy(qkModel* model);

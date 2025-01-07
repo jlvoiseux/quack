@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
-project(quack VERSION 0.1.0 LANGUAGES CXX)
+project(quack VERSION 0.1.0 LANGUAGES C)
 
 find_package(Python REQUIRED)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
 
 include(FetchContent)
 
@@ -34,33 +34,16 @@ FetchContent_Declare(
         GIT_TAG master
 )
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    FetchContent_Declare(
-            tracy
-            GIT_REPOSITORY https://github.com/wolfpld/tracy.git
-            GIT_TAG v0.11.1
-    )
-
-    set(TRACY_ENABLE ON)
-    set(TRACY_ON_DEMAND ON)
-
-    FetchContent_MakeAvailable(tracy)
-endif()
-
-FetchContent_MakeAvailable(SDL3 cgltf tracy)
+FetchContent_MakeAvailable(SDL3 cgltf)
 
 add_executable(quack
-        src/main.cpp
-        src/math/qkVec3.cpp
-        src/qkRenderer.cpp
-        src/qkModel.cpp
-        include/quack/qkModel.h
-        src/qkModel.cpp
-        include/quack/qkCamera.h
-        src/qkCamera.cpp
-        include/quack/qkDebug.h
-        include/quack/qkTexture.h
-        src/qkTexture.cpp
+        src/main.c
+        src/math/qkVec3.c
+        src/qkRenderer.c
+        src/qkModel.c
+        src/qkCamera.c
+        src/qkTexture.c
+        include/quack/qkConstants.h
 )
 
 target_include_directories(quack
@@ -70,18 +53,7 @@ target_include_directories(quack
         ${stb_SOURCE_DIR}
 )
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_link_libraries(quack
-            PRIVATE
-            SDL3::SDL3
-            Tracy::TracyClient
-    )
-else()
-    target_link_libraries(quack
-            PRIVATE
-            SDL3::SDL3
-    )
-endif()
+target_link_libraries(quack PRIVATE SDL3::SDL3)
 
 if(MSVC)
     target_compile_options(quack PRIVATE /W4)

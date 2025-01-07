@@ -1,26 +1,21 @@
 #pragma once
 
 #include "quack/math/qkVec3.h"
+#include "quack/qkConstants.h"
 
-struct qkCamera
+typedef struct qkCamera
 {
-	qkCamera();
-
-	void   moveForward(float amount);
-	void   moveRight(float amount);
-	void   moveUp(float amount);
-	void   rotate(float yaw, float pitch);
-	qkVec3 worldToScreen(const qkVec3& point, float screenWidth, float screenHeight) const;
-
 	qkVec3 position;
 	float  yaw;	   // Rotation around Y axis
 	float  pitch;  // Rotation around X axis
 	float  fov;	   // In radians
 	float  nearZ;
 	float  farZ;
+} qkCamera;
 
-private:
-	qkVec3 forward() const;
-	qkVec3 right() const;
-	qkVec3 up() const;
-};
+void qkCameraInit(qkCamera* camera);
+void qkCameraMoveForward(qkCamera* camera, float amount);
+void qkCameraMoveRight(qkCamera* camera, float amount);
+void qkCameraMoveUp(qkCamera* camera, float amount);
+void qkCameraRotate(qkCamera* camera, float yaw, float pitch);
+void qkCameraWorldToScreen(const qkCamera* camera, const qkVec3* point, float screenWidth, float screenHeight, qkVec3* out);

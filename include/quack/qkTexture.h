@@ -1,16 +1,15 @@
 #pragma once
 
 #include <SDL3/SDL.h>
-#include <string>
+#include <stdint.h>
 
-struct qkTexture
+typedef struct qkTexture
 {
-	qkTexture(const char* filename);
-	~qkTexture();
+	uint32_t* pixels;
+	int		  width;
+	int		  height;
+} qkTexture;
 
-	uint32_t sample(float u, float v) const;
-
-private:
-	SDL_Surface*   m_surface;
-	unsigned char* m_data;
-};
+int		 qkTextureLoad(const char* filename, qkTexture* out);
+void	 qkTextureDestroy(qkTexture* texture);
+uint32_t qkTextureSample(const qkTexture* texture, float u, float v);
