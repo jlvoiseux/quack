@@ -5,9 +5,6 @@
 
 #include <SDL3/SDL.h>
 
-#define QK_SCREEN_WIDTH 1280
-#define QK_SCREEN_HEIGHT 720
-
 typedef struct qkRenderer
 {
 	SDL_Window*	  window;

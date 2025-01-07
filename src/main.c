@@ -104,11 +104,11 @@ int main(int argc, char* argv[])
 		{
 			qkCameraMoveRight(&camera, moveSpeed);
 		}
-		if (keys[SDL_SCANCODE_Q])
+		if (keys[SDL_SCANCODE_SPACE])
 		{
 			qkCameraMoveUp(&camera, moveSpeed);
 		}
-		if (keys[SDL_SCANCODE_E])
+		if (keys[SDL_SCANCODE_LCTRL])
 		{
 			qkCameraMoveUp(&camera, -moveSpeed);
 		}
