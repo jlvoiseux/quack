@@ -112,6 +112,23 @@ void qkRendererDrawPixel(qkRenderer* renderer, int x, int y, float z, uint32_t c
 void qkRendererDrawTriangle(
 	qkRenderer* renderer, const qkVec3* v1, const qkVec3* v2, const qkVec3* v3, float texU1, float texV1, float texU2, float texV2, float texU3, float texV3, const qkTexture* texture)
 {
+	// Back-face culling
+	qkVec3 edge1, edge2, normal;
+	qkVec3Sub(v2, v1, &edge1);
+	qkVec3Sub(v3, v1, &edge2);
+	qkVec3Cross(&edge2, &edge1, &normal);
+
+	if (normal.z <= 0.0f)
+	{
+		return;
+	}
+
+	// Near plane clipping
+	if (v1->z < 0.1f || v2->z < 0.1f || v3->z < 0.1f)
+	{
+		return;
+	}
+
 	qkSpanBufferClear(&renderer->spanBuffer);
 
 	// Sort vertices by Y coordinate
