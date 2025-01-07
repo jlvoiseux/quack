@@ -51,6 +51,17 @@ int qkRendererCreate(int width, int height, qkRenderer* out)
 		return -5;
 	}
 
+	if (qkSpanBufferCreate(height, 64, &out->spanBuffer) != 0)
+	{
+		free(out->frameBuffer);
+		free(out->zBuffer);
+		SDL_DestroyTexture(out->frameTexture);
+		SDL_DestroyRenderer(out->sdlRenderer);
+		SDL_DestroyWindow(out->window);
+		SDL_Quit();
+		return -6;
+	}
+
 	out->width	= width;
 	out->height = height;
 
@@ -64,6 +75,7 @@ void qkRendererDestroy(qkRenderer* renderer)
 
 	free(renderer->frameBuffer);
 	free(renderer->zBuffer);
+	qkSpanBufferDestroy(&renderer->spanBuffer);
 
 	if (renderer->frameTexture)
 		SDL_DestroyTexture(renderer->frameTexture);
@@ -100,13 +112,7 @@ void qkRendererDrawPixel(qkRenderer* renderer, int x, int y, float z, uint32_t c
 void qkRendererDrawTriangle(
 	qkRenderer* renderer, const qkVec3* v1, const qkVec3* v2, const qkVec3* v3, float texU1, float texV1, float texU2, float texV2, float texU3, float texV3, const qkTexture* texture)
 {
-	if (!renderer || !v1 || !v2 || !v3 || !texture)
-	{
-		return;
-	}
-
-	const qkVec3* temp;
-	float		  tempU, tempV;
+	qkSpanBufferClear(&renderer->spanBuffer);
 
 	// Sort vertices by Y coordinate
 	const qkVec3* vertices[3] = {v1, v2, v3};
@@ -119,15 +125,15 @@ void qkRendererDrawTriangle(
 		{
 			if (vertices[j]->y > vertices[j + 1]->y)
 			{
-				temp			= vertices[j];
-				vertices[j]		= vertices[j + 1];
-				vertices[j + 1] = temp;
+				const qkVec3* tempVec = vertices[j];
+				vertices[j]			  = vertices[j + 1];
+				vertices[j + 1]		  = tempVec;
 
-				tempU		= texU[j];
+				float tempU = texU[j];
 				texU[j]		= texU[j + 1];
 				texU[j + 1] = tempU;
 
-				tempV		= texV[j];
+				float tempV = texV[j];
 				texV[j]		= texV[j + 1];
 				texV[j + 1] = tempV;
 			}
@@ -144,22 +150,7 @@ void qkRendererDrawTriangle(
 	texV2 = texV[1];
 	texV3 = texV[2];
 
-	// Early exit if triangle is completely outside screen bounds
-	if (v3->y < 0 || v1->y >= renderer->height)
-	{
-		return;
-	}
-
-	// Calculate start and end Y coordinates with proper bounds checking
-	int startY = (int)fmaxf(0.0f, ceilf(v1->y));
-	int endY   = (int)fminf(renderer->height - 1, floorf(v3->y));
-
-	if (startY >= endY)
-	{
-		return;
-	}
-
-	// Calculate slopes with protection against division by zero
+	// Generate spans for the triangle
 	float yDiff12 = v2->y - v1->y;
 	float yDiff13 = v3->y - v1->y;
 	float yDiff23 = v3->y - v2->y;
@@ -180,16 +171,15 @@ void qkRendererDrawTriangle(
 	float vSlope2 = (fabsf(yDiff13) < FLT_EPSILON) ? 0.0f : (texV3 - texV1) / yDiff13;
 	float vSlope3 = (fabsf(yDiff23) < FLT_EPSILON) ? 0.0f : (texV3 - texV2) / yDiff23;
 
-	// Rasterize the triangle
+	int startY = (int)fmaxf(0.0f, ceilf(v1->y));
+	int endY   = (int)fminf(renderer->height - 1, floorf(v3->y));
+
 	for (int y = startY; y <= endY; y++)
 	{
 		float dy		  = (float)y - v1->y;
 		int	  isUpperHalf = y < v2->y;
 
-		float leftX, rightX;
-		float leftZ, rightZ;
-		float leftU, rightU;
-		float leftV, rightV;
+		float leftX, rightX, leftZ, rightZ, leftU, rightU, leftV, rightV;
 
 		if (isUpperHalf)
 		{
@@ -212,21 +202,21 @@ void qkRendererDrawTriangle(
 		rightU = texU1 + uSlope2 * dy;
 		rightV = texV1 + vSlope2 * dy;
 
-		// Ensure left is actually on the left
 		if (leftX > rightX)
 		{
-			float tempX = leftX;
-			leftX		= rightX;
-			rightX		= tempX;
-			float tempZ = leftZ;
-			leftZ		= rightZ;
-			rightZ		= tempZ;
-			float tempU = leftU;
-			leftU		= rightU;
-			rightU		= tempU;
-			float tempV = leftV;
-			leftV		= rightV;
-			rightV		= tempV;
+			float temp;
+			temp   = leftX;
+			leftX  = rightX;
+			rightX = temp;
+			temp   = leftZ;
+			leftZ  = rightZ;
+			rightZ = temp;
+			temp   = leftU;
+			leftU  = rightU;
+			rightU = temp;
+			temp   = leftV;
+			leftV  = rightV;
+			rightV = temp;
 		}
 
 		int startX = (int)fmaxf(0.0f, ceilf(leftX));
@@ -234,24 +224,44 @@ void qkRendererDrawTriangle(
 
 		if (startX <= endX)
 		{
-			float xDiff = rightX - leftX;
-			float xStep = (fabsf(xDiff) < FLT_EPSILON) ? 0.0f : 1.0f / xDiff;
+			qkSpanBufferAddSpan(&renderer->spanBuffer, y, startX, endX, leftZ, rightZ, leftU, rightU, leftV, rightV);
+		}
+	}
 
-			float zStep = (rightZ - leftZ) * xStep;
-			float uStep = (rightU - leftU) * xStep;
-			float vStep = (rightV - leftV) * xStep;
+	// Process all spans
+	for (int y = 0; y < renderer->height; y++)
+	{
+		int		spanCount = renderer->spanBuffer.spanCounts[y];
+		qkSpan* spans	  = &renderer->spanBuffer.spans[y * renderer->spanBuffer.maxSpansPerLine];
 
-			float z = leftZ + (startX - leftX) * zStep;
-			float u = leftU + (startX - leftX) * uStep;
-			float v = leftV + (startX - leftX) * vStep;
+		for (int i = 0; i < spanCount; i++)
+		{
+			qkSpan* span  = &spans[i];
+			int		width = span->endX - span->startX + 1;
+			if (width <= 0)
+				continue;
 
-			for (int x = startX; x <= endX; x++)
+			float zStep = (span->endZ - span->startZ) / width;
+			float uStep = (span->endU - span->startU) / width;
+			float vStep = (span->endV - span->startV) / width;
+
+			float z = span->startZ;
+			float u = span->startU;
+			float v = span->startV;
+
+			// Process span pixels linearly
+			int offset = y * renderer->width + span->startX;
+			for (int x = 0; x < width; x++)
 			{
-				uint32_t color = qkTextureSample(texture, u, v);
-				qkRendererDrawPixel(renderer, x, y, z, color);
+				if (z < renderer->zBuffer[offset])
+				{
+					renderer->frameBuffer[offset] = qkTextureSample(texture, u, v);
+					renderer->zBuffer[offset]	  = z;
+				}
 				z += zStep;
 				u += uStep;
 				v += vStep;
+				offset++;
 			}
 		}
 	}

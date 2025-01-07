@@ -43,6 +43,7 @@ add_executable(quack
         src/qkModel.c
         src/qkCamera.c
         src/qkTexture.c
+        src/qkSpanBuffer.c
         src/qkPerformance.c
 )
 

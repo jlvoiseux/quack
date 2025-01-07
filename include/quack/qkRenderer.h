@@ -1,6 +1,7 @@
 #pragma once
 
 #include "quack/math/qkVec3.h"
+#include "quack/qkSpanBuffer.h"
 #include "quack/qkTexture.h"
 
 #include <SDL3/SDL.h>
@@ -14,6 +15,7 @@ typedef struct qkRenderer
 	float*		  zBuffer;
 	int			  width;
 	int			  height;
+	qkSpanBuffer  spanBuffer;
 } qkRenderer;
 
 int	 qkRendererCreate(int width, int height, qkRenderer* out);
