@@ -5,6 +5,7 @@
 #include "quack/qkTexture.h"
 
 #include <SDL3/SDL.h>
+#include <stdio.h>
 
 int main(int argc, char* argv[])
 {
@@ -46,6 +47,7 @@ int main(int argc, char* argv[])
 
 	while (running)
 	{
+		// printf("%f, %f, %f, %f, %f\n", camera.position.x, camera.position.y, camera.position.z, camera.yaw, camera.pitch);
 		while (SDL_PollEvent(&event))
 		{
 			switch (event.type)
@@ -144,7 +146,6 @@ int main(int argc, char* argv[])
 	qkTextureDestroy(&texture);
 	qkModelDestroy(&model);
 	qkRendererDestroy(&renderer);
-	qkPerformanceDestroy(&perf);
 
 	return 0;
 }

@@ -1,89 +1,45 @@
 #include "quack/qkPerformance.h"
 
 #include <SDL3/SDL.h>
-#include <search.h>
 #include <stdio.h>
 
-static int compareFloats(const void* a, const void* b)
-{
-	float fa = *(const float*)a;
-	float fb = *(const float*)b;
-	if (fa < fb)
-		return -1;
-	if (fa > fb)
-		return 1;
-	return 0;
-}
+#define QK_WARM_UP_TIME 2.0
+#define QK_STATS_INTERVAL 5.0
 
 void qkPerformanceInit(qkPerformance* perf)
 {
-	perf->lastTime			= SDL_GetTicks() / 1000.0;
-	perf->frameTime			= 0.0;
-	perf->frameCount		= 0;
-	perf->fpsUpdateInterval = 1.0;
-	perf->lastFpsUpdate		= perf->lastTime;
-	perf->currentFps		= 0.0f;
-	perf->fpsValuesCapacity = 60;  // Store up to 60 FPS values
-	perf->fpsValues			= malloc(perf->fpsValuesCapacity * sizeof(float));
-	perf->fpsValuesCount	= 0;
+	perf->frameTime		   = 0.0;
+	perf->frameCount	   = 0;
+	perf->isWarmUpDone	   = false;
+	perf->averageFrameTime = 0.0;
+	perf->lastStatsOutput  = perf->lastTime;
 }
 
 void qkPerformanceUpdate(qkPerformance* perf)
 {
-	double currentTime = SDL_GetTicks() / 1000.0;
-	perf->frameTime	   = currentTime - perf->lastTime;
-	perf->lastTime	   = currentTime;
-	perf->frameCount++;
+	const double currentTime = SDL_GetTicks() / 1000.0;
+	perf->frameTime			 = currentTime - perf->lastTime;
+	perf->lastTime			 = currentTime;
 
-	if (currentTime - perf->lastFpsUpdate >= perf->fpsUpdateInterval)
+	if (!perf->isWarmUpDone)
 	{
-		float currentFps = (float)(perf->frameCount / (currentTime - perf->lastFpsUpdate));
-
-		if (perf->fpsValuesCount < perf->fpsValuesCapacity)
+		if (currentTime >= QK_WARM_UP_TIME)
 		{
-			perf->fpsValues[perf->fpsValuesCount++] = currentFps;
+			perf->isWarmUpDone	   = true;
+			perf->frameCount	   = 0;
+			perf->averageFrameTime = 0.0;
+			printf("Warm-up complete. Starting performance measurements.\n");
 		}
-		else
-		{
-			memmove(perf->fpsValues, perf->fpsValues + 1, (perf->fpsValuesCapacity - 1) * sizeof(float));
-			perf->fpsValues[perf->fpsValuesCapacity - 1] = currentFps;
-		}
-
-		float* sortedFps = malloc(perf->fpsValuesCount * sizeof(float));
-		memcpy(sortedFps, perf->fpsValues, perf->fpsValuesCount * sizeof(float));
-		qsort(sortedFps, perf->fpsValuesCount, sizeof(float), compareFloats);
-
-		float medianFps = sortedFps[perf->fpsValuesCount / 2];
-		free(sortedFps);
-
-		printf("\rMedian FPS: %.5f", medianFps);
-		fflush(stdout);
-
-		perf->frameCount	= 0;
-		perf->lastFpsUpdate = currentTime;
+		return;
 	}
-}
 
-float qkPerformanceGetFps(const qkPerformance* perf)
-{
-	if (perf->fpsValuesCount == 0)
-		return 0.0f;
+	perf->frameCount++;
+	perf->averageFrameTime = (perf->averageFrameTime * (perf->frameCount - 1) + perf->frameTime) / perf->frameCount;
 
-	float* sortedFps = malloc(perf->fpsValuesCount * sizeof(float));
-	memcpy(sortedFps, perf->fpsValues, perf->fpsValuesCount * sizeof(float));
-	qsort(sortedFps, perf->fpsValuesCount, sizeof(float), compareFloats);
-
-	float medianFps = sortedFps[perf->fpsValuesCount / 2];
-	free(sortedFps);
-
-	return medianFps;
-}
-
-void qkPerformanceDestroy(qkPerformance* perf)
-{
-	if (perf && perf->fpsValues)
+	if (currentTime - perf->lastStatsOutput >= QK_STATS_INTERVAL)
 	{
-		free(perf->fpsValues);
-		perf->fpsValues = NULL;
+		const float avgFps = perf->averageFrameTime > 0.0 ? 1.0f / (float)perf->averageFrameTime : 0.0f;
+		printf("Average frame time: %.4f ms (%.4f FPS) over %d frames\n", perf->averageFrameTime * 1000.0, avgFps, perf->frameCount);
+		perf->lastStatsOutput = currentTime;
 	}
 }

@@ -1,19 +1,16 @@
 #pragma once
 
+#include <stdbool.h>
+
 typedef struct qkPerformance
 {
 	double lastTime;
 	double frameTime;
 	int	   frameCount;
-	double fpsUpdateInterval;
-	double lastFpsUpdate;
-	float  currentFps;
-	float* fpsValues;
-	int	   fpsValuesCapacity;
-	int	   fpsValuesCount;
+	bool   isWarmUpDone;
+	double averageFrameTime;
+	double lastStatsOutput;
 } qkPerformance;
 
-void  qkPerformanceInit(qkPerformance* perf);
-void  qkPerformanceUpdate(qkPerformance* perf);
-float qkPerformanceGetFps(const qkPerformance* perf);
-void  qkPerformanceDestroy(qkPerformance* perf);
+void qkPerformanceInit(qkPerformance* perf);
+void qkPerformanceUpdate(qkPerformance* perf);
