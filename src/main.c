@@ -19,14 +19,14 @@ int main(int argc, char* argv[])
 	}
 
 	qkModel model = {0};
-	if (qkModelLoad("assets/fox_geo.glb", &model) != 0)
+	if (qkModelLoad("assets/autumn_geo.glb", &model) != 0)
 	{
 		qkRendererDestroy(&renderer);
 		return 1;
 	}
 
 	qkTexture texture = {0};
-	if (qkTextureLoad("assets/fox_tex.png", &texture) != 0)
+	if (qkTextureLoad("assets/autumn_tex.png", &texture) != 0)
 	{
 		qkModelDestroy(&model);
 		qkRendererDestroy(&renderer);
