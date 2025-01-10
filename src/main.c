@@ -85,8 +85,8 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		const uint8_t* keys		 = SDL_GetKeyboardState(NULL);
-		float		   moveSpeed = 1.0f;
+		const bool* keys	  = SDL_GetKeyboardState(NULL);
+		float		moveSpeed = 1.0f;
 
 		if (keys[SDL_SCANCODE_W])
 		{

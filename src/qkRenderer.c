@@ -6,7 +6,7 @@
 
 int qkRendererCreate(int width, int height, qkRenderer* out)
 {
-	if (SDL_Init(SDL_INIT_VIDEO) < 0)
+	if (!SDL_Init(SDL_INIT_VIDEO))
 	{
 		return -1;
 	}
