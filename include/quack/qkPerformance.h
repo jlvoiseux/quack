@@ -4,12 +4,12 @@
 
 typedef struct qkPerformance
 {
-	double lastTime;
-	double frameTime;
+	size_t lastTime;
+	size_t frameTime;
 	int	   frameCount;
 	bool   isWarmUpDone;
-	double averageFrameTime;
-	double lastStatsOutput;
+	size_t averageFrameTime;
+	size_t lastStatsOutput;
 } qkPerformance;
 
 void qkPerformanceInit(qkPerformance* perf);
