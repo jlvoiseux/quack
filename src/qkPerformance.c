@@ -3,7 +3,7 @@
 #include <SDL3/SDL.h>
 #include <stdio.h>
 
-#define QK_WARM_UP_TIME 2.0
+#define QK_WARM_UP_TIME 5.0
 #define QK_STATS_INTERVAL 5.0
 
 void qkPerformanceInit(qkPerformance* perf)
@@ -29,6 +29,7 @@ void qkPerformanceUpdate(qkPerformance* perf)
 			perf->frameCount	   = 0;
 			perf->averageFrameTime = 0.0;
 			printf("Warm-up complete. Starting performance measurements.\n");
+			perf->lastStatsOutput = currentTime;
 		}
 		return;
 	}
