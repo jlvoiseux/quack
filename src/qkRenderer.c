@@ -271,7 +271,7 @@ void qkRendererDrawTriangle(
 	}
 }
 
-void qkRendererPresent(qkRenderer* renderer)
+void qkRendererPresent(qkRenderer* renderer, const qkTexture* texture)
 {
 	SDL_UpdateTexture(renderer->frameTexture, NULL, renderer->frameBuffer, renderer->width * sizeof(uint32_t));
 	SDL_RenderClear(renderer->sdlRenderer);
