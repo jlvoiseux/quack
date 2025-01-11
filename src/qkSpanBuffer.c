@@ -3,17 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int compareSpans(const void* a, const void* b)
-{
-	const qkSpan* spanA = (const qkSpan*)a;
-	const qkSpan* spanB = (const qkSpan*)b;
-	if (spanA->minZ < spanB->minZ)
-		return -1;
-	if (spanA->minZ > spanB->minZ)
-		return 1;
-	return 0;
-}
-
 int qkSpanBufferCreate(int height, int spansPerBlock, qkSpanBuffer* pOut)
 {
 	pOut->height		= height;
@@ -140,12 +129,7 @@ void qkSpanBufferProcess(qkSpanBuffer* pBuffer, int width, int height, uint32_t*
 
 		const int baseOffset  = pBuffer->pScanlineOffsets[y];
 		const int frameOffset = y * width;
-
-		if (spanCount > 1)
-		{
-			qsort(&pBuffer->pSpans[baseOffset], spanCount, sizeof(qkSpan), compareSpans);
-		}
-
+		
 		for (int i = 0; i < spanCount; i++)
 		{
 			const qkSpan* pSpan	 = &pBuffer->pSpans[baseOffset + i];
