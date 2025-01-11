@@ -8,7 +8,7 @@ typedef struct qkPerformance
 	size_t frameTime;
 	int	   frameCount;
 	bool   isWarmUpDone;
-	size_t averageFrameTime;
+	float  averageFrameTime;
 	size_t lastStatsOutput;
 } qkPerformance;
 

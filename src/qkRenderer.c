@@ -50,7 +50,7 @@ int qkRendererCreate(int width, int height, qkRenderer* pOut)
 		return -5;
 	}
 
-	if (qkSpanBufferCreate(height, 64, &pOut->spanBuffer) != 0)
+	if (!qkSpanBufferCreate(height, 64, &pOut->spanBuffer))
 	{
 		free(pOut->pFrameBuffer);
 		free(pOut->pZBuffer);

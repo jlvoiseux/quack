@@ -1,30 +1,28 @@
-// src/qkSpanBuffer.c
 #include "quack/qkSpanBuffer.h"
 
 #include <stdlib.h>
 #include <string.h>
 
-int qkSpanBufferCreate(int height, int maxSpansPerLine, qkSpanBuffer* pOut)
+int qkSpanBufferCreate(int height, int spansPerBlock, qkSpanBuffer* pOut)
 {
-	pOut->height		  = height;
-	pOut->maxSpansPerLine = maxSpansPerLine;
-	pOut->totalCapacity	  = height * maxSpansPerLine;
+	pOut->height		= height;
+	pOut->spansPerBlock = spansPerBlock;
+	pOut->totalBlocks	= 4;
+	pOut->currentSpan	= 0;
 
-	pOut->pSpans = malloc(sizeof(qkSpan) * pOut->totalCapacity);
-	if (!pOut->pSpans)
-	{
-		return -1;
-	}
+	size_t totalSpans	  = pOut->totalBlocks * spansPerBlock;
+	pOut->spans			  = malloc(totalSpans * sizeof(qkSpan));
+	pOut->scanlineCounts  = malloc(height * sizeof(uint16_t));
+	pOut->scanlineOffsets = malloc(height * sizeof(uint16_t));
 
-	pOut->pSpanCounts = malloc(sizeof(int) * height);
-	if (!pOut->pSpanCounts)
+	if (!pOut->spans || !pOut->scanlineCounts || !pOut->scanlineOffsets)
 	{
-		free(pOut->pSpans);
-		return -2;
+		qkSpanBufferDestroy(pOut);
+		return 0;
 	}
 
 	qkSpanBufferClear(pOut);
-	return 0;
+	return 1;
 }
 
 void qkSpanBufferDestroy(qkSpanBuffer* pBuffer)
@@ -34,72 +32,116 @@ void qkSpanBufferDestroy(qkSpanBuffer* pBuffer)
 		return;
 	}
 
-	free(pBuffer->pSpans);
-	free(pBuffer->pSpanCounts);
+	free(pBuffer->spans);
+	free(pBuffer->scanlineCounts);
+	free(pBuffer->scanlineOffsets);
 	memset(pBuffer, 0, sizeof(qkSpanBuffer));
 }
 
 void qkSpanBufferClear(qkSpanBuffer* pBuffer)
 {
-	memset(pBuffer->pSpanCounts, 0, sizeof(int) * pBuffer->height);
+	memset(pBuffer->scanlineCounts, 0, pBuffer->height * sizeof(uint16_t));
+	pBuffer->currentSpan = 0;
+}
+
+static int qkSpanBufferGrow(qkSpanBuffer* pBuffer)
+{
+	int	   newTotalBlocks = pBuffer->totalBlocks * 2;
+	size_t newSize		  = newTotalBlocks * pBuffer->spansPerBlock * sizeof(qkSpan);
+
+	qkSpan* pNewSpans = realloc(pBuffer->spans, newSize);
+	if (!pNewSpans)
+	{
+		return 0;
+	}
+
+	pBuffer->spans		 = pNewSpans;
+	pBuffer->totalBlocks = newTotalBlocks;
+	return 1;
 }
 
 void qkSpanBufferAdd(qkSpanBuffer* pBuffer, int y, int startX, int endX, float startZ, float endZ, float startU, float endU, float startV, float endV)
 {
-	if (y < 0 || y >= pBuffer->height || pBuffer->pSpanCounts[y] >= pBuffer->maxSpansPerLine)
+	if (y < 0 || y >= pBuffer->height)
 	{
 		return;
 	}
 
-	int		spanIdx = y * pBuffer->maxSpansPerLine + pBuffer->pSpanCounts[y];
-	qkSpan* span	= &pBuffer->pSpans[spanIdx];
+	// Store the offset for this scanline if it's the first span
+	if (pBuffer->scanlineCounts[y] == 0)
+	{
+		pBuffer->scanlineOffsets[y] = pBuffer->currentSpan;
+	}
 
-	span->startX = startX;
-	span->endX	 = endX;
-	span->startZ = startZ;
-	span->endZ	 = endZ;
-	span->startU = startU;
-	span->endU	 = endU;
-	span->startV = startV;
-	span->endV	 = endV;
+	// Check if we need to grow
+	if (pBuffer->currentSpan >= pBuffer->totalBlocks * pBuffer->spansPerBlock)
+	{
+		if (!qkSpanBufferGrow(pBuffer))
+		{
+			return;
+		}
+	}
 
-	pBuffer->pSpanCounts[y]++;
+	qkSpan* pSpan = &pBuffer->spans[pBuffer->currentSpan];
+	pSpan->startX = (int16_t)startX;
+	pSpan->endX	  = (int16_t)endX;
+	pSpan->startZ = startZ;
+	pSpan->endZ	  = endZ;
+	pSpan->startU = startU;
+	pSpan->endU	  = endU;
+	pSpan->startV = startV;
+	pSpan->endV	  = endV;
+
+	pBuffer->scanlineCounts[y]++;
+	pBuffer->currentSpan++;
 }
 
 void qkSpanBufferProcess(qkSpanBuffer* pBuffer, int width, int height, uint32_t* pFrameBuffer, float* pZBuffer, const qkTexture* pTex)
 {
 	for (int y = 0; y < height; y++)
 	{
-		int		spanCount = pBuffer->pSpanCounts[y];
-		qkSpan* spans	  = &pBuffer->pSpans[y * pBuffer->maxSpansPerLine];
+		const int spanCount = pBuffer->scanlineCounts[y];
+		if (spanCount == 0)
+		{
+			continue;
+		}
+
+		const int baseOffset  = pBuffer->scanlineOffsets[y];
+		const int frameOffset = y * width;
 
 		for (int i = 0; i < spanCount; i++)
 		{
-			qkSpan* span	  = &spans[i];
-			int		spanWidth = span->endX - span->startX + 1;
-			if (spanWidth <= 0)
+			const qkSpan* pSpan	 = &pBuffer->spans[baseOffset + i];
+			const int	  startX = (int)pSpan->startX;
+			const int	  endX	 = (int)pSpan->endX;
+
+			if (startX < 0 || endX >= width || startX > endX)
+			{
 				continue;
+			}
 
-			float zStep = (span->endZ - span->startZ) / spanWidth;
-			float uStep = (span->endU - span->startU) / spanWidth;
-			float vStep = (span->endV - span->startV) / spanWidth;
+			const int	spanWidth = endX - startX + 1;
+			const float zStep	  = (pSpan->endZ - pSpan->startZ) / spanWidth;
+			const float uStep	  = (pSpan->endU - pSpan->startU) / spanWidth;
+			const float vStep	  = (pSpan->endV - pSpan->startV) / spanWidth;
 
-			float z = span->startZ;
-			float u = span->startU;
-			float v = span->startV;
+			float z = pSpan->startZ;
+			float u = pSpan->startU;
+			float v = pSpan->startV;
 
-			int offset = y * width + span->startX;
+			int pixelOffset = frameOffset + startX;
+
 			for (int x = 0; x < spanWidth; x++)
 			{
-				if (z > 0.0f && z < pZBuffer[offset])
+				if (z > 0.0f && z < pZBuffer[pixelOffset])
 				{
-					pFrameBuffer[offset] = qkTextureSample(pTex, u, v);
-					pZBuffer[offset]	 = z;
+					pFrameBuffer[pixelOffset] = qkTextureSample(pTex, u, v);
+					pZBuffer[pixelOffset]	  = z;
 				}
 				z += zStep;
 				u += uStep;
 				v += vStep;
-				offset++;
+				pixelOffset++;
 			}
 		}
 	}

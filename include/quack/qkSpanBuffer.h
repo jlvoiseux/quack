@@ -1,4 +1,3 @@
-// include/quack/qkSpanBuffer.h
 #pragma once
 
 #include "qkTexture.h"
@@ -7,26 +6,28 @@
 
 typedef struct qkSpan
 {
-	int	  startX;
-	int	  endX;
-	float startZ;
-	float endZ;
-	float startU;
-	float endU;
-	float startV;
-	float endV;
+	int16_t startX;
+	int16_t endX;
+	float	startZ;
+	float	endZ;
+	float	startU;
+	float	endU;
+	float	startV;
+	float	endV;
 } qkSpan;
 
 typedef struct qkSpanBuffer
 {
-	qkSpan* pSpans;
-	int*	pSpanCounts;
-	int		height;
-	int		maxSpansPerLine;
-	int		totalCapacity;
+	qkSpan*	  spans;
+	uint16_t* scanlineCounts;
+	uint16_t* scanlineOffsets;
+	int		  height;
+	int		  spansPerBlock;
+	int		  totalBlocks;
+	int		  currentSpan;
 } qkSpanBuffer;
 
-int	 qkSpanBufferCreate(int height, int maxSpansPerLine, qkSpanBuffer* pOut);
+int	 qkSpanBufferCreate(int height, int spansPerBlock, qkSpanBuffer* pOut);
 void qkSpanBufferDestroy(qkSpanBuffer* pBuffer);
 void qkSpanBufferClear(qkSpanBuffer* pBuffer);
 void qkSpanBufferAdd(qkSpanBuffer* pBuffer, int y, int startX, int endX, float startZ, float endZ, float startU, float endU, float startV, float endV);

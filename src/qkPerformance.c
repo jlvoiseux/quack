@@ -35,12 +35,12 @@ void qkPerformanceUpdate(qkPerformance* perf)
 	}
 
 	perf->frameCount++;
-	perf->averageFrameTime = (perf->averageFrameTime * (perf->frameCount - 1) + perf->frameTime) / perf->frameCount;
+	perf->averageFrameTime = (float)(perf->averageFrameTime * ((float)perf->frameCount - 1) + (float)perf->frameTime) / (float)perf->frameCount;
 
 	if (currentTime - perf->lastStatsOutput >= QK_STATS_INTERVAL)
 	{
-		const float avgFps = perf->averageFrameTime > 0 ? 1000.0f / (float)perf->averageFrameTime : 0.0f;
-		printf("Stats | Avg: %zu ms (%.4f FPS) over %d frames, Curr: %zu ms\n", perf->averageFrameTime, avgFps, perf->frameCount, perf->frameTime);
+		const float avgFps = perf->averageFrameTime > 0 ? 1000.0f / perf->averageFrameTime : 0.0f;
+		printf("Stats | Avg: %.4f ms (%.4f FPS) over %d frames, Curr: %zu ms\n", perf->averageFrameTime, avgFps, perf->frameCount, perf->frameTime);
 		perf->lastStatsOutput = currentTime;
 	}
 }
