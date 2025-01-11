@@ -127,7 +127,7 @@ void qkTriangleBatchProcess(qkTriangleBatch* pBatch, qkSpanBuffer* pSpanBuffer, 
 		float zRatio	 = minZ / maxZ;
 		float screenArea = fabsf((p2.x - p1.x) * (p3.y - p1.y) - (p3.x - p1.x) * (p2.y - p1.y)) * 0.5f;
 
-		bool needsPerspective = normalizedNormalZ < 0.95f || zRatio < 0.95f;
+		bool needsPerspective = normalizedNormalZ < 0.95f && zRatio < 0.95f && screenArea > 10000.0f;
 
 		qkSpanBufferClear(pSpanBuffer);
 
