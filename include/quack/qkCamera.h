@@ -13,9 +13,9 @@ typedef struct qkCamera
 	float  farZ;
 } qkCamera;
 
-void qkCameraInit(qkCamera* camera);
-void qkCameraMoveForward(qkCamera* camera, float amount);
-void qkCameraMoveRight(qkCamera* camera, float amount);
-void qkCameraMoveUp(qkCamera* camera, float amount);
-void qkCameraRotate(qkCamera* camera, float yaw, float pitch);
-void qkCameraWorldToScreen(const qkCamera* camera, const qkVec3* point, float screenWidth, float screenHeight, qkVec3* out);
+void qkCameraInit(qkCamera* pCam);
+void qkCameraMoveForward(qkCamera* pCam, float amount);
+void qkCameraMoveRight(qkCamera* pCam, float amount);
+void qkCameraMoveUp(qkCamera* pCam, float amount);
+void qkCameraRotate(qkCamera* pCam, float yaw, float pitch);
+void qkCameraWorldToScreen(const qkCamera* pCam, const qkVec3* pPoint, float screenWidth, float screenHeight, qkVec3* pOut);

@@ -5,11 +5,11 @@
 
 typedef struct qkTexture
 {
-	uint32_t* pixels;
+	uint32_t* pData;
 	int		  width;
 	int		  height;
 } qkTexture;
 
-int		 qkTextureLoad(const char* filename, qkTexture* out);
-void	 qkTextureDestroy(qkTexture* texture);
-uint32_t qkTextureSample(const qkTexture* texture, float u, float v);
+int		 qkTextureLoad(const char* pFilename, qkTexture* pOut);
+void	 qkTextureDestroy(qkTexture* pTex);
+uint32_t qkTextureSample(const qkTexture* pTex, float u, float v);

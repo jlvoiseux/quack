@@ -26,79 +26,79 @@ static void qkCameraUp(const qkCamera* camera, qkVec3* out)
 	qkVec3Cross(&right, &forward, out);
 }
 
-void qkCameraInit(qkCamera* camera)
+void qkCameraInit(qkCamera* pCam)
 {
-	camera->position = qkVec3Create(116.22f, 7.65f, -7.5f);
-	camera->yaw		 = -2.875f;
-	camera->pitch	 = -0.08f;
-	camera->fov		 = QK_PI_4;
-	camera->nearZ	 = 0.1f;
-	camera->farZ	 = 100.0f;
+	pCam->position = qkVec3Create(116.22f, 7.65f, -7.5f);
+	pCam->yaw	   = -2.875f;
+	pCam->pitch	   = -0.08f;
+	pCam->fov	   = QK_PI_4;
+	pCam->nearZ	   = 0.1f;
+	pCam->farZ	   = 100.0f;
 }
 
-void qkCameraMoveForward(qkCamera* camera, float amount)
+void qkCameraMoveForward(qkCamera* pCam, float amount)
 {
 	qkVec3 forward, movement;
-	qkCameraForward(camera, &forward);
+	qkCameraForward(pCam, &forward);
 	qkVec3Scale(&forward, amount, &movement);
-	qkVec3Add(&camera->position, &movement, &camera->position);
+	qkVec3Add(&pCam->position, &movement, &pCam->position);
 }
 
-void qkCameraMoveRight(qkCamera* camera, float amount)
+void qkCameraMoveRight(qkCamera* pCam, float amount)
 {
 	qkVec3 right, movement;
-	qkCameraRight(camera, &right);
+	qkCameraRight(pCam, &right);
 	qkVec3Scale(&right, amount, &movement);
-	qkVec3Add(&camera->position, &movement, &camera->position);
+	qkVec3Add(&pCam->position, &movement, &pCam->position);
 }
 
-void qkCameraMoveUp(qkCamera* camera, float amount)
+void qkCameraMoveUp(qkCamera* pCam, float amount)
 {
 	qkVec3 up, movement;
-	qkCameraUp(camera, &up);
+	qkCameraUp(pCam, &up);
 	qkVec3Scale(&up, amount, &movement);
-	qkVec3Add(&camera->position, &movement, &camera->position);
+	qkVec3Add(&pCam->position, &movement, &pCam->position);
 }
 
-void qkCameraRotate(qkCamera* camera, float deltaYaw, float deltaPitch)
+void qkCameraRotate(qkCamera* pCam, float deltaYaw, float deltaPitch)
 {
-	camera->yaw += deltaYaw;
-	camera->pitch += deltaPitch;
+	pCam->yaw += deltaYaw;
+	pCam->pitch += deltaPitch;
 
-	if (camera->pitch > QK_PI_2 * 0.98f)
+	if (pCam->pitch > QK_PI_2 * 0.98f)
 	{
-		camera->pitch = QK_PI_2 * 0.98f;
+		pCam->pitch = QK_PI_2 * 0.98f;
 	}
-	if (camera->pitch < -QK_PI_2 * 0.98f)
+	if (pCam->pitch < -QK_PI_2 * 0.98f)
 	{
-		camera->pitch = -QK_PI_2 * 0.98f;
+		pCam->pitch = -QK_PI_2 * 0.98f;
 	}
 }
 
-void qkCameraWorldToScreen(const qkCamera* camera, const qkVec3* point, float screenWidth, float screenHeight, qkVec3* out)
+void qkCameraWorldToScreen(const qkCamera* pCam, const qkVec3* pPoint, float screenWidth, float screenHeight, qkVec3* pOut)
 {
 	qkVec3 toPoint, right, up, forward;
 
-	qkVec3Sub(point, &camera->position, &toPoint);
-	qkCameraRight(camera, &right);
-	qkCameraUp(camera, &up);
-	qkCameraForward(camera, &forward);
+	qkVec3Sub(pPoint, &pCam->position, &toPoint);
+	qkCameraRight(pCam, &right);
+	qkCameraUp(pCam, &up);
+	qkCameraForward(pCam, &forward);
 
 	float x = qkVec3Dot(&toPoint, &right);
 	float y = qkVec3Dot(&toPoint, &up);
 	float z = qkVec3Dot(&toPoint, &forward);
 
-	if (z < camera->nearZ)
+	if (z < pCam->nearZ)
 	{
-		*out = qkVec3Create(-1, -1, 0);
+		*pOut = qkVec3Create(-1, -1, 0);
 		return;
 	}
 
 	float aspectRatio = screenWidth / screenHeight;
-	float scale		  = tanf(camera->fov * 0.5f);
+	float scale		  = tanf(pCam->fov * 0.5f);
 
 	x = (x / (z * scale * aspectRatio) * 0.5f + 0.5f) * screenWidth;
 	y = (-y / (z * scale) * 0.5f + 0.5f) * screenHeight;
 
-	*out = qkVec3Create(x, y, z);
+	*pOut = qkVec3Create(x, y, z);
 }

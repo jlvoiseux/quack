@@ -72,7 +72,7 @@ static void updateWorldToScreenPositions(const qkCamera* camera, const qkModel* 
 {
 	for (size_t i = 0; i < model->vertexCount; i++)
 	{
-		qkCameraWorldToScreen(camera, &model->vertices[i].position, QK_SCREEN_WIDTH, QK_SCREEN_HEIGHT, &screenPositions[i]);
+		qkCameraWorldToScreen(camera, &model->pVertices[i].position, QK_SCREEN_WIDTH, QK_SCREEN_HEIGHT, &screenPositions[i]);
 	}
 }
 
@@ -129,10 +129,10 @@ int main(int argc, char* argv[])
 
 		for (size_t i = 0; i < model.triangleCount; i++)
 		{
-			const qkTriangle* tri = &model.triangles[i];
-			const qkVertex*	  v1  = &model.vertices[tri->v1];
-			const qkVertex*	  v2  = &model.vertices[tri->v2];
-			const qkVertex*	  v3  = &model.vertices[tri->v3];
+			const qkTriangle* tri = &model.pTriangles[i];
+			const qkVertex*	  v1  = &model.pVertices[tri->v1];
+			const qkVertex*	  v2  = &model.pVertices[tri->v2];
+			const qkVertex*	  v3  = &model.pVertices[tri->v3];
 
 			qkRendererDrawTriangle(&renderer, &screenPositions[tri->v1], &screenPositions[tri->v2], &screenPositions[tri->v3], v1->texU, v1->texV, v2->texU, v2->texV, v3->texU, v3->texV, &texture);
 		}

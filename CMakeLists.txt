@@ -45,6 +45,7 @@ add_executable(quack
         src/qkTexture.c
         src/qkSpanBuffer.c
         src/qkPerformance.c
+        src/qkTriangleBatch.c
 )
 
 target_include_directories(quack

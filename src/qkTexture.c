@@ -5,12 +5,12 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-int qkTextureLoad(const char* filename, qkTexture* out)
+int qkTextureLoad(const char* pFilename, qkTexture* pOut)
 {
 	int channels;
-	out->pixels = (uint32_t*)stbi_load(filename, &out->width, &out->height, &channels, 4);
+	pOut->pData = (uint32_t*)stbi_load(pFilename, &pOut->width, &pOut->height, &channels, 4);
 
-	if (!out->pixels)
+	if (!pOut->pData)
 	{
 		return -1;
 	}
@@ -18,25 +18,25 @@ int qkTextureLoad(const char* filename, qkTexture* out)
 	return 0;
 }
 
-void qkTextureDestroy(qkTexture* texture)
+void qkTextureDestroy(qkTexture* pTex)
 {
-	if (!texture)
+	if (!pTex)
 		return;
 
-	if (texture->pixels)
+	if (pTex->pData)
 	{
-		stbi_image_free(texture->pixels);
-		texture->pixels = NULL;
+		stbi_image_free(pTex->pData);
+		pTex->pData = NULL;
 	}
 }
 
-uint32_t qkTextureSample(const qkTexture* texture, float u, float v)
+uint32_t qkTextureSample(const qkTexture* pTex, float u, float v)
 {
-	int x = (int)(u * (texture->width - 1) + 0.5f);
-	int y = (int)(v * (texture->height - 1) + 0.5f);
+	int x = (int)(u * (pTex->width - 1) + 0.5f);
+	int y = (int)(v * (pTex->height - 1) + 0.5f);
 
-	x = (x % texture->width + texture->width) % texture->width;
-	y = (y % texture->height + texture->height) % texture->height;
+	x = (x % pTex->width + pTex->width) % pTex->width;
+	y = (y % pTex->height + pTex->height) % pTex->height;
 
-	return texture->pixels[y * texture->width + x];
+	return pTex->pData[y * pTex->width + x];
 }

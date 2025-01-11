@@ -18,11 +18,11 @@ typedef struct qkTriangle
 
 typedef struct qkModel
 {
-	qkVertex*	vertices;
+	qkVertex*	pVertices;
 	size_t		vertexCount;
-	qkTriangle* triangles;
+	qkTriangle* pTriangles;
 	size_t		triangleCount;
-	void*		gltfData;
+	void*		pGltfData;
 } qkModel;
 
 int	 qkModelLoad(const char* filename, qkModel* out);

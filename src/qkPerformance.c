@@ -3,8 +3,8 @@
 #include <SDL3/SDL.h>
 #include <stdio.h>
 
-#define QK_WARM_UP_TIME 0
-#define QK_STATS_INTERVAL 0.1
+#define QK_WARM_UP_TIME 5000
+#define QK_STATS_INTERVAL 5000
 
 void qkPerformanceInit(qkPerformance* perf)
 {
