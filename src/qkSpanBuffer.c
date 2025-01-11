@@ -3,23 +3,39 @@
 #include <stdlib.h>
 #include <string.h>
 
-int qkSpanBufferCreate(int height, int spansPerBlock, qkSpanBuffer* pOut)
+int qkSpanBufferCreate(int height, size_t spansPerBlock, size_t blockCount, qkSpanBuffer* pOut)
 {
-	pOut->height		= height;
-	pOut->spansPerBlock = spansPerBlock;
-	pOut->totalBlocks	= 4;
-	pOut->currentSpan	= 0;
+	pOut->pBlocks = malloc(sizeof(qkBlock) * blockCount);
+	if (!pOut->pBlocks)
+	{
+		return 0;
+	}
 
-	size_t totalSpans	   = pOut->totalBlocks * spansPerBlock;
-	pOut->pSpans		   = malloc(totalSpans * sizeof(qkSpan));
-	pOut->pScanlineCounts  = malloc(height * sizeof(uint16_t));
-	pOut->pScanlineOffsets = malloc(height * sizeof(uint16_t));
+	for (size_t i = 0; i < blockCount; i++)
+	{
+		if (!qkBlockCreate(sizeof(qkSpan), spansPerBlock, &pOut->pBlocks[i]))
+		{
+			for (size_t j = 0; j < i; j++)
+			{
+				qkBlockDestroy(&pOut->pBlocks[j]);
+			}
+			free(pOut->pBlocks);
+			return 0;
+		}
+	}
 
-	if (!pOut->pSpans || !pOut->pScanlineCounts || !pOut->pScanlineOffsets)
+	pOut->pSpanCounts  = malloc(height * sizeof(uint16_t));
+	pOut->pSpanOffsets = malloc(height * sizeof(uint16_t));
+
+	if (!pOut->pSpanCounts || !pOut->pSpanOffsets)
 	{
 		qkSpanBufferDestroy(pOut);
 		return 0;
 	}
+
+	pOut->blockCount  = blockCount;
+	pOut->activeBlock = 0;
+	pOut->height	  = height;
 
 	qkSpanBufferClear(pOut);
 	return 1;
@@ -30,30 +46,161 @@ void qkSpanBufferDestroy(qkSpanBuffer* pBuffer)
 	if (!pBuffer)
 		return;
 
-	free(pBuffer->pSpans);
-	free(pBuffer->pScanlineCounts);
-	free(pBuffer->pScanlineOffsets);
+	for (size_t i = 0; i < pBuffer->blockCount; i++)
+	{
+		qkBlockDestroy(&pBuffer->pBlocks[i]);
+	}
+
+	free(pBuffer->pBlocks);
+	free(pBuffer->pSpanCounts);
+	free(pBuffer->pSpanOffsets);
 	memset(pBuffer, 0, sizeof(qkSpanBuffer));
 }
 
 void qkSpanBufferClear(qkSpanBuffer* pBuffer)
 {
-	memset(pBuffer->pScanlineCounts, 0, pBuffer->height * sizeof(uint16_t));
-	pBuffer->currentSpan = 0;
+	memset(pBuffer->pSpanCounts, 0, pBuffer->height * sizeof(uint16_t));
+	for (size_t i = 0; i < pBuffer->blockCount; i++)
+	{
+		qkBlockClear(&pBuffer->pBlocks[i]);
+	}
+	pBuffer->activeBlock = 0;
 }
 
-static int qkSpanBufferGrow(qkSpanBuffer* pBuffer)
+void qkSpanBufferAdd(qkSpanBuffer* pBuffer, int y, int startX, int endX, float startZ, float endZ, float startUOverZ, float endUOverZ, float startVOverZ, float endVOverZ, float startInvZ, float endInvZ, bool perspective)
 {
-	int	   newTotalBlocks = pBuffer->totalBlocks * 2;
-	size_t newSize		  = newTotalBlocks * pBuffer->spansPerBlock * sizeof(qkSpan);
+	if (y < 0 || y >= pBuffer->height)
+		return;
 
-	qkSpan* pNewSpans = realloc(pBuffer->pSpans, newSize);
-	if (!pNewSpans)
-		return 0;
+	qkSpan span = {.startX		= (int16_t)startX,
+				   .endX		= (int16_t)endX,
+				   .y			= (int16_t)y,
+				   .startZ		= startZ,
+				   .endZ		= endZ,
+				   .startUOverZ = startUOverZ,
+				   .endUOverZ	= endUOverZ,
+				   .startVOverZ = startVOverZ,
+				   .endVOverZ	= endVOverZ,
+				   .startInvZ	= startInvZ,
+				   .endInvZ		= endInvZ,
+				   .minZ		= startZ < endZ ? startZ : endZ,
+				   .perspective = perspective};
 
-	pBuffer->pSpans		 = pNewSpans;
-	pBuffer->totalBlocks = newTotalBlocks;
-	return 1;
+	if (qkBlockIsFull(&pBuffer->pBlocks[pBuffer->activeBlock]))
+	{
+		if (pBuffer->activeBlock < pBuffer->blockCount - 1)
+		{
+			pBuffer->activeBlock++;
+		}
+		else
+		{
+			size_t	 newBlockCount = pBuffer->blockCount * 2;
+			qkBlock* pNewBlocks	   = realloc(pBuffer->pBlocks, sizeof(qkBlock) * newBlockCount);
+			if (!pNewBlocks)
+			{
+				qkSpanBufferProcess(pBuffer, 0, 0, NULL, NULL, NULL);
+				qkSpanBufferClear(pBuffer);
+			}
+			else
+			{
+				for (size_t i = pBuffer->blockCount; i < newBlockCount; i++)
+				{
+					if (!qkBlockCreate(sizeof(qkSpan), pBuffer->pBlocks[0].capacity, &pNewBlocks[i]))
+					{
+						newBlockCount = i;
+						break;
+					}
+				}
+				pBuffer->pBlocks	= pNewBlocks;
+				pBuffer->blockCount = newBlockCount;
+				pBuffer->activeBlock++;
+			}
+		}
+	}
+
+	qkBlockAdd(&pBuffer->pBlocks[pBuffer->activeBlock], &span);
+	pBuffer->pSpanCounts[y]++;
+}
+
+static void processBlock(qkBlock* pBlock, int width, int height, uint32_t* pFrameBuffer, float* pZBuffer, const qkTexture* pTex)
+{
+	for (size_t i = 0; i < pBlock->count; i++)
+	{
+		const qkSpan* pSpan	 = qkBlockGetElement(pBlock, i);
+		const int	  startX = (int)pSpan->startX;
+		const int	  endX	 = (int)pSpan->endX;
+		const int	  y		 = pSpan->y;
+
+		if (startX < 0 || endX >= width || startX > endX || y < 0 || y >= height)
+		{
+			continue;
+		}
+
+		const int	spanWidth	= endX - startX + 1;
+		const float zStep		= (pSpan->endZ - pSpan->startZ) / spanWidth;
+		float		z			= pSpan->startZ;
+		int			pixelOffset = y * width + startX;
+
+		if (!pSpan->perspective)
+		{
+			float u		= pSpan->startUOverZ / pSpan->startInvZ;
+			float v		= pSpan->startVOverZ / pSpan->startInvZ;
+			float uStep = ((pSpan->endUOverZ / pSpan->endInvZ) - u) / spanWidth;
+			float vStep = ((pSpan->endVOverZ / pSpan->endInvZ) - v) / spanWidth;
+
+			for (int x = 0; x < spanWidth; x++)
+			{
+				if (z > 0.0f && z < pZBuffer[pixelOffset])
+				{
+					pFrameBuffer[pixelOffset] = qkTextureSample(pTex, u, v);
+					pZBuffer[pixelOffset]	  = z;
+				}
+				z += zStep;
+				u += uStep;
+				v += vStep;
+				pixelOffset++;
+			}
+		}
+		else
+		{
+			const float uOverZStep = (pSpan->endUOverZ - pSpan->startUOverZ) / spanWidth;
+			const float vOverZStep = (pSpan->endVOverZ - pSpan->startVOverZ) / spanWidth;
+			const float invZStep   = (pSpan->endInvZ - pSpan->startInvZ) / spanWidth;
+
+			float uOverZ = pSpan->startUOverZ;
+			float vOverZ = pSpan->startVOverZ;
+			float invZ	 = pSpan->startInvZ;
+
+			for (int x = 0; x < spanWidth; x++)
+			{
+				if (z > 0.0f && z < pZBuffer[pixelOffset])
+				{
+					const float invZRecip	  = 1.0f / invZ;
+					float		u			  = uOverZ * invZRecip;
+					float		v			  = vOverZ * invZRecip;
+					pFrameBuffer[pixelOffset] = qkTextureSample(pTex, u, v);
+					pZBuffer[pixelOffset]	  = z;
+				}
+				z += zStep;
+				uOverZ += uOverZStep;
+				vOverZ += vOverZStep;
+				invZ += invZStep;
+				pixelOffset++;
+			}
+		}
+	}
+}
+
+void qkSpanBufferProcess(qkSpanBuffer* pBuffer, int width, int height, uint32_t* pFrameBuffer, float* pZBuffer, const qkTexture* pTex)
+{
+	// Process all active blocks
+	for (size_t i = 0; i <= pBuffer->activeBlock; i++)
+	{
+		if (pBuffer->pBlocks[i].count > 0)
+		{
+			processBlock(&pBuffer->pBlocks[i], width, height, pFrameBuffer, pZBuffer, pTex);
+		}
+	}
 }
 
 void qkSpanBufferGenerate(qkSpanBuffer* pSpanBuffer, int y, float leftX, float rightX, float leftZ, float rightZ, float leftUOverZ, float rightUOverZ, float leftVOverZ, float rightVOverZ, float leftInvZ, float rightInvZ, bool perspective, int width, int height)
@@ -61,21 +208,25 @@ void qkSpanBufferGenerate(qkSpanBuffer* pSpanBuffer, int y, float leftX, float r
 	if (leftX > rightX)
 	{
 		float temp;
-		temp		= leftX;
-		leftX		= rightX;
-		rightX		= temp;
-		temp		= leftZ;
-		leftZ		= rightZ;
-		rightZ		= temp;
+		temp   = leftX;
+		leftX  = rightX;
+		rightX = temp;
+
+		temp   = leftZ;
+		leftZ  = rightZ;
+		rightZ = temp;
+
 		temp		= leftUOverZ;
 		leftUOverZ	= rightUOverZ;
 		rightUOverZ = temp;
+
 		temp		= leftVOverZ;
 		leftVOverZ	= rightVOverZ;
 		rightVOverZ = temp;
-		temp		= leftInvZ;
-		leftInvZ	= rightInvZ;
-		rightInvZ	= temp;
+
+		temp	  = leftInvZ;
+		leftInvZ  = rightInvZ;
+		rightInvZ = temp;
 	}
 
 	int startX = (int)fmaxf(0.0f, ceilf(leftX));
@@ -84,113 +235,5 @@ void qkSpanBufferGenerate(qkSpanBuffer* pSpanBuffer, int y, float leftX, float r
 	if (startX <= endX)
 	{
 		qkSpanBufferAdd(pSpanBuffer, y, startX, endX, leftZ, rightZ, leftUOverZ, rightUOverZ, leftVOverZ, rightVOverZ, leftInvZ, rightInvZ, perspective);
-	}
-}
-
-void qkSpanBufferAdd(qkSpanBuffer* pBuffer, int y, int startX, int endX, float startZ, float endZ, float startUOverZ, float endUOverZ, float startVOverZ, float endVOverZ, float startInvZ, float endInvZ, bool perspective)
-{
-	if (y < 0 || y >= pBuffer->height)
-		return;
-
-	if (pBuffer->pScanlineCounts[y] == 0)
-		pBuffer->pScanlineOffsets[y] = pBuffer->currentSpan;
-
-	if (pBuffer->currentSpan >= pBuffer->totalBlocks * pBuffer->spansPerBlock)
-	{
-		if (!qkSpanBufferGrow(pBuffer))
-			return;
-	}
-
-	qkSpan* pSpan	   = &pBuffer->pSpans[pBuffer->currentSpan];
-	pSpan->startX	   = (int16_t)startX;
-	pSpan->endX		   = (int16_t)endX;
-	pSpan->startZ	   = startZ;
-	pSpan->endZ		   = endZ;
-	pSpan->startUOverZ = startUOverZ;
-	pSpan->endUOverZ   = endUOverZ;
-	pSpan->startVOverZ = startVOverZ;
-	pSpan->endVOverZ   = endVOverZ;
-	pSpan->startInvZ   = startInvZ;
-	pSpan->endInvZ	   = endInvZ;
-	pSpan->minZ		   = fminf(startZ, endZ);
-	pSpan->perspective = perspective;
-
-	pBuffer->pScanlineCounts[y]++;
-	pBuffer->currentSpan++;
-}
-
-void qkSpanBufferProcess(qkSpanBuffer* pBuffer, int width, int height, uint32_t* pFrameBuffer, float* pZBuffer, const qkTexture* pTex)
-{
-	for (int y = 0; y < height; y++)
-	{
-		const int spanCount = pBuffer->pScanlineCounts[y];
-		if (spanCount == 0)
-			continue;
-
-		const int baseOffset  = pBuffer->pScanlineOffsets[y];
-		const int frameOffset = y * width;
-		
-		for (int i = 0; i < spanCount; i++)
-		{
-			const qkSpan* pSpan	 = &pBuffer->pSpans[baseOffset + i];
-			const int	  startX = (int)pSpan->startX;
-			const int	  endX	 = (int)pSpan->endX;
-
-			if (startX < 0 || endX >= width || startX > endX)
-				continue;
-
-			const int	spanWidth	= endX - startX + 1;
-			const float zStep		= (pSpan->endZ - pSpan->startZ) / spanWidth;
-			float		z			= pSpan->startZ;
-			int			pixelOffset = frameOffset + startX;
-
-			if (!pSpan->perspective)
-			{
-				float u		= pSpan->startUOverZ / pSpan->startInvZ;
-				float v		= pSpan->startVOverZ / pSpan->startInvZ;
-				float uStep = ((pSpan->endUOverZ / pSpan->endInvZ) - u) / spanWidth;
-				float vStep = ((pSpan->endVOverZ / pSpan->endInvZ) - v) / spanWidth;
-
-				for (int x = 0; x < spanWidth; x++)
-				{
-					if (z > 0.0f && z < pZBuffer[pixelOffset])
-					{
-						pFrameBuffer[pixelOffset] = qkTextureSample(pTex, u, v);
-						pZBuffer[pixelOffset]	  = z;
-					}
-					z += zStep;
-					u += uStep;
-					v += vStep;
-					pixelOffset++;
-				}
-			}
-			else
-			{
-				const float uOverZStep = (pSpan->endUOverZ - pSpan->startUOverZ) / spanWidth;
-				const float vOverZStep = (pSpan->endVOverZ - pSpan->startVOverZ) / spanWidth;
-				const float invZStep   = (pSpan->endInvZ - pSpan->startInvZ) / spanWidth;
-
-				float uOverZ = pSpan->startUOverZ;
-				float vOverZ = pSpan->startVOverZ;
-				float invZ	 = pSpan->startInvZ;
-
-				for (int x = 0; x < spanWidth; x++)
-				{
-					if (z > 0.0f && z < pZBuffer[pixelOffset])
-					{
-						const float invZRecip	  = 1.0f / invZ;
-						float		u			  = uOverZ * invZRecip;
-						float		v			  = vOverZ * invZRecip;
-						pFrameBuffer[pixelOffset] = qkTextureSample(pTex, u, v);
-						pZBuffer[pixelOffset]	  = z;
-					}
-					z += zStep;
-					uOverZ += uOverZStep;
-					vOverZ += vOverZStep;
-					invZ += invZStep;
-					pixelOffset++;
-				}
-			}
-		}
 	}
 }

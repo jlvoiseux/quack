@@ -3,6 +3,9 @@
 #include <float.h>
 #include <string.h>
 
+#define QK_SPANS_PER_BLOCK 64
+#define QK_BLOCK_COUNT 4
+
 int qkRendererCreate(int width, int height, qkRenderer* pOut)
 {
 	if (!SDL_Init(SDL_INIT_VIDEO))
@@ -10,7 +13,7 @@ int qkRendererCreate(int width, int height, qkRenderer* pOut)
 		return -1;
 	}
 
-	pOut->pWindow = SDL_CreateWindow("Software Renderer", width, height, SDL_WINDOW_RESIZABLE);
+	pOut->pWindow = SDL_CreateWindow("Quack Renderer", width, height, SDL_WINDOW_RESIZABLE);
 	if (!pOut->pWindow)
 	{
 		SDL_Quit();
@@ -50,7 +53,7 @@ int qkRendererCreate(int width, int height, qkRenderer* pOut)
 		return -5;
 	}
 
-	if (!qkSpanBufferCreate(height, 64, &pOut->spanBuffer))
+	if (!qkSpanBufferCreate(height, QK_SPANS_PER_BLOCK, QK_BLOCK_COUNT, &pOut->spanBuffer))
 	{
 		free(pOut->pFrameBuffer);
 		free(pOut->pZBuffer);
@@ -106,6 +109,7 @@ void qkRendererClear(qkRenderer* pRenderer)
 	{
 		pRenderer->pZBuffer[i] = FLT_MAX;
 	}
+	qkSpanBufferClear(&pRenderer->spanBuffer);
 }
 
 void qkRendererDrawTriangle(qkRenderer* pRenderer, const qkVec3* pPos1, const qkVec3* pPos2, const qkVec3* pPos3, float u1, float v1, float u2, float v2, float u3, float v3, const qkTexture* pTex)

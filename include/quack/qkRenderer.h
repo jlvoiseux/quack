@@ -1,9 +1,10 @@
+// qkRenderer.h
 #pragma once
 
-#include "quack/math/qkVec3.h"
-#include "quack/qkSpanBuffer.h"
-#include "quack/qkTexture.h"
-#include "quack/qkTriangleBatch.h"
+#include "qkBlock.h"
+#include "qkSpanBuffer.h"
+#include "qkTexture.h"
+#include "qkTriangleBatch.h"
 
 #include <SDL3/SDL.h>
 

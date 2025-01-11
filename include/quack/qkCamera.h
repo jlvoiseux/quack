@@ -6,9 +6,9 @@
 typedef struct qkCamera
 {
 	qkVec3 position;
-	float  yaw;	   // Rotation around Y axis
-	float  pitch;  // Rotation around X axis
-	float  fov;	   // In radians
+	float  yaw;
+	float  pitch;
+	float  fov;
 	float  nearZ;
 	float  farZ;
 } qkCamera;
