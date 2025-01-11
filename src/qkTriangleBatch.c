@@ -175,40 +175,14 @@ void qkTriangleBatchProcess(qkTriangleBatch* pBatch, qkSpanBuffer* pSpanBuffer, 
 
 			float leftX	 = vertices[0]->x + slope1 * dy;
 			float rightX = vertices[0]->x + slope2 * dy;
-
 			float leftZ	 = vertices[0]->z + zSlope1 * dy;
 			float rightZ = vertices[0]->z + zSlope2 * dy;
-
 			float leftU	 = texU[0] + uSlope1 * dy;
 			float rightU = texU[0] + uSlope2 * dy;
-
 			float leftV	 = texV[0] + vSlope1 * dy;
 			float rightV = texV[0] + vSlope2 * dy;
 
-			if (leftX > rightX)
-			{
-				float temp;
-				temp   = leftX;
-				leftX  = rightX;
-				rightX = temp;
-				temp   = leftZ;
-				leftZ  = rightZ;
-				rightZ = temp;
-				temp   = leftU;
-				leftU  = rightU;
-				rightU = temp;
-				temp   = leftV;
-				leftV  = rightV;
-				rightV = temp;
-			}
-
-			int startX = (int)fmaxf(0.0f, ceilf(leftX));
-			int endX   = (int)fminf(width - 1, floorf(rightX));
-
-			if (startX <= endX)
-			{
-				qkSpanBufferAdd(pSpanBuffer, y, startX, endX, leftZ, rightZ, leftU, rightU, leftV, rightV);
-			}
+			qkSpanBufferGenerate(pSpanBuffer, y, leftX, rightX, leftZ, rightZ, leftU, rightU, leftV, rightV, width, height);
 		}
 
 		for (int y = midY + 1; y <= endY; y++)
@@ -218,40 +192,14 @@ void qkTriangleBatchProcess(qkTriangleBatch* pBatch, qkSpanBuffer* pSpanBuffer, 
 
 			float leftX	 = vertices[1]->x + slope3 * dy1;
 			float rightX = vertices[0]->x + slope2 * dy2;
-
 			float leftZ	 = vertices[1]->z + zSlope3 * dy1;
 			float rightZ = vertices[0]->z + zSlope2 * dy2;
-
 			float leftU	 = texU[1] + uSlope3 * dy1;
 			float rightU = texU[0] + uSlope2 * dy2;
-
 			float leftV	 = texV[1] + vSlope3 * dy1;
 			float rightV = texV[0] + vSlope2 * dy2;
 
-			if (leftX > rightX)
-			{
-				float temp;
-				temp   = leftX;
-				leftX  = rightX;
-				rightX = temp;
-				temp   = leftZ;
-				leftZ  = rightZ;
-				rightZ = temp;
-				temp   = leftU;
-				leftU  = rightU;
-				rightU = temp;
-				temp   = leftV;
-				leftV  = rightV;
-				rightV = temp;
-			}
-
-			int startX = (int)fmaxf(0.0f, ceilf(leftX));
-			int endX   = (int)fminf(width - 1, floorf(rightX));
-
-			if (startX <= endX)
-			{
-				qkSpanBufferAdd(pSpanBuffer, y, startX, endX, leftZ, rightZ, leftU, rightU, leftV, rightV);
-			}
+			qkSpanBufferGenerate(pSpanBuffer, y, leftX, rightX, leftZ, rightZ, leftU, rightU, leftV, rightV, width, height);
 		}
 
 		qkSpanBufferProcess(pSpanBuffer, width, height, frameBuffer, pZBuffer, pTex);

@@ -60,6 +60,34 @@ static int qkSpanBufferGrow(qkSpanBuffer* pBuffer)
 	return 1;
 }
 
+void qkSpanBufferGenerate(qkSpanBuffer* pSpanBuffer, int y, float leftX, float rightX, float leftZ, float rightZ, float leftU, float rightU, float leftV, float rightV, int width, int height)
+{
+	if (leftX > rightX)
+	{
+		float temp;
+		temp   = leftX;
+		leftX  = rightX;
+		rightX = temp;
+		temp   = leftZ;
+		leftZ  = rightZ;
+		rightZ = temp;
+		temp   = leftU;
+		leftU  = rightU;
+		rightU = temp;
+		temp   = leftV;
+		leftV  = rightV;
+		rightV = temp;
+	}
+
+	int startX = (int)fmaxf(0.0f, ceilf(leftX));
+	int endX   = (int)fminf(width - 1, floorf(rightX));
+
+	if (startX <= endX)
+	{
+		qkSpanBufferAdd(pSpanBuffer, y, startX, endX, leftZ, rightZ, leftU, rightU, leftV, rightV);
+	}
+}
+
 void qkSpanBufferAdd(qkSpanBuffer* pBuffer, int y, int startX, int endX, float startZ, float endZ, float startU, float endU, float startV, float endV)
 {
 	if (y < 0 || y >= pBuffer->height)

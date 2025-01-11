@@ -30,5 +30,6 @@ typedef struct qkSpanBuffer
 int	 qkSpanBufferCreate(int height, int spansPerBlock, qkSpanBuffer* pOut);
 void qkSpanBufferDestroy(qkSpanBuffer* pBuffer);
 void qkSpanBufferClear(qkSpanBuffer* pBuffer);
+void qkSpanBufferGenerate(qkSpanBuffer* pSpanBuffer, int y, float leftX, float rightX, float leftZ, float rightZ, float leftU, float rightU, float leftV, float rightV, int width, int height);
 void qkSpanBufferAdd(qkSpanBuffer* pBuffer, int y, int startX, int endX, float startZ, float endZ, float startU, float endU, float startV, float endV);
 void qkSpanBufferProcess(qkSpanBuffer* pBuffer, int width, int height, uint32_t* pFrameBuffer, float* pZBuffer, const qkTexture* pTex);
