@@ -179,7 +179,11 @@ void qkVertexProcess(qkBuffer* pVertexBuffer0, qkBuffer* pVertexBuffer1, qkBuffe
 
 			if (!qkSpanBufferAdd(pSpanBuffer, y, leftX, rightX, leftZ, rightZ, leftUOverZ, rightUOverZ, leftVOverZ, rightVOverZ, leftInvZ, rightInvZ, needsPerspective, width))
 			{
+#ifdef SIMD_ENABLE
+				qkSpanBufferProcess8(pSpanBuffer, width, height, pFrameBuffer, pZBuffer, pTex);
+#else
 				qkSpanBufferProcess(pSpanBuffer, width, height, pFrameBuffer, pZBuffer, pTex);
+#endif
 				qkSpanBufferClear(pSpanBuffer);
 				qkSpanBufferAdd(pSpanBuffer, y, leftX, rightX, leftZ, rightZ, leftUOverZ, rightUOverZ, leftVOverZ, rightVOverZ, leftInvZ, rightInvZ, needsPerspective, width);
 			}
@@ -204,7 +208,11 @@ void qkVertexProcess(qkBuffer* pVertexBuffer0, qkBuffer* pVertexBuffer1, qkBuffe
 
 			if (!qkSpanBufferAdd(pSpanBuffer, y, leftX, rightX, leftZ, rightZ, leftUOverZ, rightUOverZ, leftVOverZ, rightVOverZ, leftInvZ, rightInvZ, needsPerspective, width))
 			{
+#ifdef SIMD_ENABLE
+				qkSpanBufferProcess8(pSpanBuffer, width, height, pFrameBuffer, pZBuffer, pTex);
+#else
 				qkSpanBufferProcess(pSpanBuffer, width, height, pFrameBuffer, pZBuffer, pTex);
+#endif
 				qkSpanBufferClear(pSpanBuffer);
 				qkSpanBufferAdd(pSpanBuffer, y, leftX, rightX, leftZ, rightZ, leftUOverZ, rightUOverZ, leftVOverZ, rightVOverZ, leftInvZ, rightInvZ, needsPerspective, width);
 			}
@@ -212,7 +220,13 @@ void qkVertexProcess(qkBuffer* pVertexBuffer0, qkBuffer* pVertexBuffer1, qkBuffe
 	}
 
 	if (pSpanBuffer->count > 0)
+	{
+#ifdef SIMD_ENABLE
+		qkSpanBufferProcess8(pSpanBuffer, width, height, pFrameBuffer, pZBuffer, pTex);
+#else
 		qkSpanBufferProcess(pSpanBuffer, width, height, pFrameBuffer, pZBuffer, pTex);
+#endif
+	}
 
 	qkVertexBufferClear(pVertexBuffer0);
 	qkVertexBufferClear(pVertexBuffer1);

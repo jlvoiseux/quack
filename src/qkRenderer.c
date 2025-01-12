@@ -38,8 +38,13 @@ int qkRendererCreate(int width, int height, qkRenderer* pOut)
 		return -4;
 	}
 
+#ifdef SIMD_ENABLE
+	pOut->pFrameBuffer = _aligned_malloc(width * height * sizeof(uint32_t), 32);
+	pOut->pZBuffer	   = _aligned_malloc(width * height * sizeof(float), 32);
+#else
 	pOut->pFrameBuffer = malloc(width * height * sizeof(uint32_t));
 	pOut->pZBuffer	   = malloc(width * height * sizeof(float));
+#endif
 
 	if (!pOut->pFrameBuffer || !pOut->pZBuffer)
 	{
@@ -116,8 +121,14 @@ void qkRendererDestroy(qkRenderer* pRenderer)
 	qkVertexBufferDestroy(&pRenderer->vertexBuffer1);
 	qkVertexBufferDestroy(&pRenderer->vertexBuffer2);
 	qkSpanBufferDestroy(&pRenderer->spanBuffer);
+
+#ifdef SIMD_ENABLE
+	_aligned_free(pRenderer->pFrameBuffer);
+	_aligned_free(pRenderer->pZBuffer);
+#else
 	free(pRenderer->pFrameBuffer);
 	free(pRenderer->pZBuffer);
+#endif
 
 	if (pRenderer->pFrameTexture)
 		SDL_DestroyTexture(pRenderer->pFrameTexture);

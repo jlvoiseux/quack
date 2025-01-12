@@ -68,6 +68,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(quack PRIVATE TRACY_ENABLE)
 endif()
 
+#target_compile_definitions(quack PRIVATE SIMD_ENABLE)
+
 set_target_properties(quack
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
