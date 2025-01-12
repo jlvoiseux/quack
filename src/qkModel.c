@@ -51,12 +51,11 @@ int qkModelLoad(const char* filename, qkModel* out)
 		}
 	}
 
-	// Allocate memory
 	out->pVertices = malloc(totalVertices * sizeof(qkVertex));
 	if (!out->pVertices)
 	{
 		cgltf_free(data);
-		return -3;	// -3: Failed to allocate vertices
+		return -3;	// Failed to allocate vertices
 	}
 
 	out->pTriangles = malloc(totalTriangles * sizeof(qkTriangle));
@@ -124,7 +123,7 @@ int qkModelLoad(const char* filename, qkModel* out)
 					cgltf_accessor_read_uint(accessor, k + 1, &indices[1], 1);
 					cgltf_accessor_read_uint(accessor, k + 2, &indices[2], 1);
 
-					out->pTriangles[triangleOffset + k / 3].v1 = vertexOffset + indices[0];
+					out->pTriangles[triangleOffset + k / 3].v1 = (int)vertexOffset + indices[0];
 					out->pTriangles[triangleOffset + k / 3].v2 = vertexOffset + indices[1];
 					out->pTriangles[triangleOffset + k / 3].v3 = vertexOffset + indices[2];
 				}

@@ -1,11 +1,10 @@
 #include "quack/qkRenderer.h"
 
+#include "quack/qkConstants.h"
+
 #include <float.h>
 #include <stdio.h>
 #include <string.h>
-
-#define QK_SPANS_PER_BLOCK 64
-#define QK_VERTEX_PER_BLOCK 64
 
 int qkRendererCreate(int width, int height, qkRenderer* pOut)
 {
