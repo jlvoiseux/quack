@@ -7,7 +7,7 @@
 #include <SDL3/SDL.h>
 #include <stdio.h>
 
-static void handleInput(qkCamera* camera, int* running)
+static void handleInput(qkCamera* pCam, int* pRunning, const qkPerformance* pPerf)
 {
 	SDL_Event  event;
 	static int lastMouseX = 0;
@@ -19,7 +19,7 @@ static void handleInput(qkCamera* camera, int* running)
 		switch (event.type)
 		{
 			case SDL_EVENT_QUIT:
-				*running = 0;
+				*pRunning = 0;
 				break;
 
 			case SDL_EVENT_MOUSE_BUTTON_DOWN:
@@ -41,9 +41,9 @@ static void handleInput(qkCamera* camera, int* running)
 			case SDL_EVENT_MOUSE_MOTION:
 				if (mouseDown)
 				{
-					float deltaX = (float)(event.motion.x - (float)lastMouseX) * 0.005f;
-					float deltaY = (float)(event.motion.y - (float)lastMouseY) * 0.005f;
-					qkCameraRotate(camera, deltaX, -deltaY);
+					float deltaX = (float)(event.motion.x - lastMouseX) * 0.005f;
+					float deltaY = (float)(event.motion.y - lastMouseY) * 0.005f;
+					qkCameraRotate(pCam, deltaX, -deltaY);
 					lastMouseX = (int)event.motion.x;
 					lastMouseY = (int)event.motion.y;
 				}
@@ -51,21 +51,23 @@ static void handleInput(qkCamera* camera, int* running)
 		}
 	}
 
-	const float moveSpeed = 1.0f;
+	const float baseSpeed = 50.0f;
+	const float deltaTime = (float)pPerf->frameTime * 0.001f;
+	const float moveSpeed = baseSpeed * deltaTime;
 	const bool* keys	  = SDL_GetKeyboardState(NULL);
 
 	if (keys[SDL_SCANCODE_W])
-		qkCameraMoveForward(camera, moveSpeed);
+		qkCameraMoveForward(pCam, moveSpeed);
 	if (keys[SDL_SCANCODE_S])
-		qkCameraMoveForward(camera, -moveSpeed);
+		qkCameraMoveForward(pCam, -moveSpeed);
 	if (keys[SDL_SCANCODE_A])
-		qkCameraMoveRight(camera, -moveSpeed);
+		qkCameraMoveRight(pCam, -moveSpeed);
 	if (keys[SDL_SCANCODE_D])
-		qkCameraMoveRight(camera, moveSpeed);
+		qkCameraMoveRight(pCam, moveSpeed);
 	if (keys[SDL_SCANCODE_SPACE])
-		qkCameraMoveUp(camera, moveSpeed);
+		qkCameraMoveUp(pCam, moveSpeed);
 	if (keys[SDL_SCANCODE_LCTRL])
-		qkCameraMoveUp(camera, -moveSpeed);
+		qkCameraMoveUp(pCam, -moveSpeed);
 }
 
 static void updateWorldToScreenPositions(const qkCamera* camera, const qkModel* model, qkVec3* screenPositions)
@@ -120,7 +122,7 @@ int main(int argc, char* argv[])
 	int running = 1;
 	while (running)
 	{
-		handleInput(&camera, &running);
+		handleInput(&camera, &running, &perf);
 
 		qkRendererClear(&renderer);
 
