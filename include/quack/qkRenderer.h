@@ -1,24 +1,22 @@
-// qkRenderer.h
 #pragma once
 
-#include "qkBlock.h"
-#include "qkSpanBuffer.h"
 #include "qkTexture.h"
-#include "qkTriangleBatch.h"
+#include "quack/block/qkSpanBlock.h"
+#include "quack/block/qkTriangleBlock.h"
 
 #include <SDL3/SDL.h>
 
 typedef struct qkRenderer
 {
-	SDL_Window*		pWindow;
-	SDL_Renderer*	pSdlRenderer;
-	SDL_Texture*	pFrameTexture;
-	uint32_t*		pFrameBuffer;
-	float*			pZBuffer;
-	int				width;
-	int				height;
-	qkSpanBuffer	spanBuffer;
-	qkTriangleBatch triangleBatch;
+	SDL_Window*	  pWindow;
+	SDL_Renderer* pSdlRenderer;
+	SDL_Texture*  pFrameTexture;
+	uint32_t*	  pFrameBuffer;
+	float*		  pZBuffer;
+	int			  width;
+	int			  height;
+	qkBlock		  spanBlock;
+	qkBlock		  triangleBlock;
 } qkRenderer;
 
 int	 qkRendererCreate(int width, int height, qkRenderer* pOut);

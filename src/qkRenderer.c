@@ -1,10 +1,11 @@
 #include "quack/qkRenderer.h"
 
 #include <float.h>
+#include <stdio.h>
 #include <string.h>
 
-#define QK_SPANS_PER_BLOCK 64
-#define QK_BLOCK_COUNT 4
+#define QK_SPANS_PER_BLOCK 128
+#define QK_TRIANGLES_PER_BLOCK 64
 
 int qkRendererCreate(int width, int height, qkRenderer* pOut)
 {
@@ -53,7 +54,7 @@ int qkRendererCreate(int width, int height, qkRenderer* pOut)
 		return -5;
 	}
 
-	if (!qkSpanBufferCreate(height, QK_SPANS_PER_BLOCK, QK_BLOCK_COUNT, &pOut->spanBuffer))
+	if (!qkSpanBlockCreate(height, QK_SPANS_PER_BLOCK, &pOut->spanBlock))
 	{
 		free(pOut->pFrameBuffer);
 		free(pOut->pZBuffer);
@@ -64,9 +65,9 @@ int qkRendererCreate(int width, int height, qkRenderer* pOut)
 		return -6;
 	}
 
-	if (!qkTriangleBatchCreate(&pOut->triangleBatch))
+	if (!qkTriangleBlockCreate(QK_TRIANGLES_PER_BLOCK * 3, &pOut->triangleBlock))
 	{
-		qkSpanBufferDestroy(&pOut->spanBuffer);
+		qkSpanBlockDestroy(&pOut->spanBlock);
 		free(pOut->pFrameBuffer);
 		free(pOut->pZBuffer);
 		SDL_DestroyTexture(pOut->pFrameTexture);
@@ -87,8 +88,8 @@ void qkRendererDestroy(qkRenderer* pRenderer)
 	if (!pRenderer)
 		return;
 
-	qkTriangleBatchDestroy(&pRenderer->triangleBatch);
-	qkSpanBufferDestroy(&pRenderer->spanBuffer);
+	qkTriangleBlockDestroy(&pRenderer->triangleBlock);
+	qkSpanBlockDestroy(&pRenderer->spanBlock);
 	free(pRenderer->pFrameBuffer);
 	free(pRenderer->pZBuffer);
 
@@ -109,21 +110,21 @@ void qkRendererClear(qkRenderer* pRenderer)
 	{
 		pRenderer->pZBuffer[i] = FLT_MAX;
 	}
-	qkSpanBufferClear(&pRenderer->spanBuffer);
+	qkSpanBlockClear(&pRenderer->spanBlock);
 }
 
 void qkRendererDrawTriangle(qkRenderer* pRenderer, const qkVec3* pPos1, const qkVec3* pPos2, const qkVec3* pPos3, float u1, float v1, float u2, float v2, float u3, float v3, const qkTexture* pTex)
 {
-	if (!qkTriangleBatchAdd(&pRenderer->triangleBatch, pPos1, pPos2, pPos3, u1, v1, u2, v2, u3, v3))
+	if (!qkTriangleBlockAdd(&pRenderer->triangleBlock, pPos1, pPos2, pPos3, u1, v1, u2, v2, u3, v3))
 	{
-		qkTriangleBatchProcess(&pRenderer->triangleBatch, &pRenderer->spanBuffer, pRenderer->width, pRenderer->height, pRenderer->pFrameBuffer, pRenderer->pZBuffer, pTex);
-		qkTriangleBatchAdd(&pRenderer->triangleBatch, pPos1, pPos2, pPos3, u1, v1, u2, v2, u3, v3);
+		qkTriangleBlockProcess(&pRenderer->triangleBlock, &pRenderer->spanBlock, pRenderer->width, pRenderer->height, pRenderer->pFrameBuffer, pRenderer->pZBuffer, pTex);
+		qkTriangleBlockAdd(&pRenderer->triangleBlock, pPos1, pPos2, pPos3, u1, v1, u2, v2, u3, v3);
 	}
 }
 
 void qkRendererPresent(qkRenderer* pRenderer, const qkTexture* pTex)
 {
-	qkTriangleBatchProcess(&pRenderer->triangleBatch, &pRenderer->spanBuffer, pRenderer->width, pRenderer->height, pRenderer->pFrameBuffer, pRenderer->pZBuffer, pTex);
+	qkTriangleBlockProcess(&pRenderer->triangleBlock, &pRenderer->spanBlock, pRenderer->width, pRenderer->height, pRenderer->pFrameBuffer, pRenderer->pZBuffer, pTex);
 
 	SDL_UpdateTexture(pRenderer->pFrameTexture, NULL, pRenderer->pFrameBuffer, pRenderer->width * sizeof(uint32_t));
 	SDL_RenderClear(pRenderer->pSdlRenderer);

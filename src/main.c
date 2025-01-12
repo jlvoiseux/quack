@@ -26,8 +26,8 @@ static void handleInput(qkCamera* camera, int* running)
 				if (event.button.button == SDL_BUTTON_LEFT)
 				{
 					mouseDown  = 1;
-					lastMouseX = event.button.x;
-					lastMouseY = event.button.y;
+					lastMouseX = (int)event.button.x;
+					lastMouseY = (int)event.button.y;
 				}
 				break;
 
@@ -41,11 +41,11 @@ static void handleInput(qkCamera* camera, int* running)
 			case SDL_EVENT_MOUSE_MOTION:
 				if (mouseDown)
 				{
-					float deltaX = (float)(event.motion.x - lastMouseX) * 0.005f;
-					float deltaY = (float)(event.motion.y - lastMouseY) * 0.005f;
+					float deltaX = (float)(event.motion.x - (float)lastMouseX) * 0.005f;
+					float deltaY = (float)(event.motion.y - (float)lastMouseY) * 0.005f;
 					qkCameraRotate(camera, deltaX, -deltaY);
-					lastMouseX = event.motion.x;
-					lastMouseY = event.motion.y;
+					lastMouseX = (int)event.motion.x;
+					lastMouseY = (int)event.motion.y;
 				}
 				break;
 		}
@@ -102,7 +102,6 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	// Pre-allocate screen position buffer
 	qkVec3* screenPositions = malloc(sizeof(qkVec3) * model.vertexCount);
 	if (!screenPositions)
 	{

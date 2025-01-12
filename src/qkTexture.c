@@ -32,8 +32,8 @@ void qkTextureDestroy(qkTexture* pTex)
 
 uint32_t qkTextureSample(const qkTexture* pTex, float u, float v)
 {
-	int x = (int)(u * (pTex->width - 1) + 0.5f);
-	int y = (int)(v * (pTex->height - 1) + 0.5f);
+	int x = (int)(u * ((float)pTex->width - 1) + 0.5f);
+	int y = (int)(v * ((float)pTex->height - 1) + 0.5f);
 
 	x = (x % pTex->width + pTex->width) % pTex->width;
 	y = (y % pTex->height + pTex->height) % pTex->height;
