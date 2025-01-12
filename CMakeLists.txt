@@ -39,9 +39,9 @@ FetchContent_MakeAvailable(SDL3 cgltf)
 add_executable(quack
         src/main.c
         src/math/qkVec3.c
-        src/block/qkBlock.c
-        src/block/qkSpanBlock.c
-        src/block/qkTriangleBlock.c
+        src/buffer/qkBuffer.c
+        src/buffer/qkSpanBuffer.c
+        src/buffer/qkVertexBuffer.c
         src/qkRenderer.c
         src/qkModel.c
         src/qkCamera.c

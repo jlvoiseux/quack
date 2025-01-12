@@ -1,10 +1,10 @@
-#include "quack/block/qkSpanBlock.h"
+#include "quack/buffer/qkSpanBuffer.h"
 
 #include <string.h>
 
-int qkSpanBlockCreate(int height, size_t capacity, qkBlock* pOut)
+int qkSpanBufferCreate(int height, size_t capacity, qkBuffer* pOut)
 {
-	if (!qkBlockCreate(capacity, pOut))
+	if (!qkBufferCreate(capacity, pOut))
 	{
 		return 0;
 	}
@@ -13,21 +13,21 @@ int qkSpanBlockCreate(int height, size_t capacity, qkBlock* pOut)
 	return 1;
 }
 
-void qkSpanBlockDestroy(qkBlock* pSpanBlock)
+void qkSpanBufferDestroy(qkBuffer* pSpanBuffer)
 {
-	if (!pSpanBlock)
+	if (!pSpanBuffer)
 		return;
-	qkBlockDestroy(pSpanBlock);
+	qkBufferDestroy(pSpanBuffer);
 }
 
-void qkSpanBlockClear(qkBlock* pSpanBlock)
+void qkSpanBufferClear(qkBuffer* pSpanBuffer)
 {
-	qkBlockClear(pSpanBlock);
+	qkBufferClear(pSpanBuffer);
 }
 
-int qkSpanBlockAdd(qkBlock* pSpanBlock, int y, float startX, float endX, float startZ, float endZ, float startUOverZ, float endUOverZ, float startVOverZ, float endVOverZ, float startInvZ, float endInvZ, bool perspective, int width)
+int qkSpanBufferAdd(qkBuffer* pSpanBuffer, int y, float startX, float endX, float startZ, float endZ, float startUOverZ, float endUOverZ, float startVOverZ, float endVOverZ, float startInvZ, float endInvZ, bool perspective, int width)
 {
-	if (y < 0 || y >= pSpanBlock->pInt0[0] || qkBlockIsFull(pSpanBlock))
+	if (y < 0 || y >= pSpanBuffer->pInt0[0] || qkBufferIsFull(pSpanBuffer))
 	{
 		return 0;
 	}
@@ -64,54 +64,54 @@ int qkSpanBlockAdd(qkBlock* pSpanBlock, int y, float startX, float endX, float s
 		return 0;
 	}
 
-	size_t idx = pSpanBlock->count;
+	size_t idx = pSpanBuffer->count;
 
-	pSpanBlock->pShort0[idx] = (int16_t)startXBounded;
-	pSpanBlock->pShort1[idx] = (int16_t)endXBounded;
-	pSpanBlock->pShort2[idx] = (int16_t)y;
+	pSpanBuffer->pShort0[idx] = (int16_t)startXBounded;
+	pSpanBuffer->pShort1[idx] = (int16_t)endXBounded;
+	pSpanBuffer->pShort2[idx] = (int16_t)y;
 
-	pSpanBlock->pFloat0[idx] = startZ;
-	pSpanBlock->pFloat1[idx] = endZ;
-	pSpanBlock->pFloat2[idx] = fminf(startZ, endZ);
+	pSpanBuffer->pFloat0[idx] = startZ;
+	pSpanBuffer->pFloat1[idx] = endZ;
+	pSpanBuffer->pFloat2[idx] = fminf(startZ, endZ);
 
-	pSpanBlock->pFloat3[idx] = startUOverZ;
-	pSpanBlock->pFloat4[idx] = startVOverZ;
-	pSpanBlock->pFloat5[idx] = startInvZ;
-	pSpanBlock->pFloat6[idx] = endUOverZ;
-	pSpanBlock->pFloat7[idx] = endVOverZ;
-	pSpanBlock->pFloat8[idx] = endInvZ;
+	pSpanBuffer->pFloat3[idx] = startUOverZ;
+	pSpanBuffer->pFloat4[idx] = startVOverZ;
+	pSpanBuffer->pFloat5[idx] = startInvZ;
+	pSpanBuffer->pFloat6[idx] = endUOverZ;
+	pSpanBuffer->pFloat7[idx] = endVOverZ;
+	pSpanBuffer->pFloat8[idx] = endInvZ;
 
-	pSpanBlock->pInt1[idx] = perspective ? 1 : 0;
-	pSpanBlock->count++;
+	pSpanBuffer->pInt1[idx] = perspective ? 1 : 0;
+	pSpanBuffer->count++;
 
 	return 1;
 }
 
-void qkSpanBlockProcess(qkBlock* pSpanBlock, int width, int height, uint32_t* pFrameBuffer, float* pZBuffer, const qkTexture* pTex)
+void qkSpanBufferProcess(qkBuffer* pSpanBuffer, int width, int height, uint32_t* pFrameBuffer, float* pZBuffer, const qkTexture* pTex)
 {
-	for (size_t i = 0; i < pSpanBlock->count; i++)
+	for (size_t i = 0; i < pSpanBuffer->count; i++)
 	{
-		const int startX = pSpanBlock->pShort0[i];
-		const int endX	 = pSpanBlock->pShort1[i];
-		const int y		 = pSpanBlock->pShort2[i];
+		const int startX = pSpanBuffer->pShort0[i];
+		const int endX	 = pSpanBuffer->pShort1[i];
+		const int y		 = pSpanBuffer->pShort2[i];
 
 		if (startX < 0 || endX >= width || startX > endX || y < 0 || y >= height)
 			continue;
 
 		const int	spanWidth	= endX - startX + 1;
-		const float startZ		= pSpanBlock->pFloat0[i];
-		const float endZ		= pSpanBlock->pFloat1[i];
+		const float startZ		= pSpanBuffer->pFloat0[i];
+		const float endZ		= pSpanBuffer->pFloat1[i];
 		const float zStep		= (endZ - startZ) / (float)spanWidth;
 		float		z			= startZ;
 		int			pixelOffset = y * width + startX;
 
-		const float startUOverZ = pSpanBlock->pFloat3[i];
-		const float startVOverZ = pSpanBlock->pFloat4[i];
-		const float startInvZ	= pSpanBlock->pFloat5[i];
-		const float endUOverZ	= pSpanBlock->pFloat6[i];
-		const float endVOverZ	= pSpanBlock->pFloat7[i];
-		const float endInvZ		= pSpanBlock->pFloat8[i];
-		const bool	perspective = pSpanBlock->pInt1[i] != 0;
+		const float startUOverZ = pSpanBuffer->pFloat3[i];
+		const float startVOverZ = pSpanBuffer->pFloat4[i];
+		const float startInvZ	= pSpanBuffer->pFloat5[i];
+		const float endUOverZ	= pSpanBuffer->pFloat6[i];
+		const float endVOverZ	= pSpanBuffer->pFloat7[i];
+		const float endInvZ		= pSpanBuffer->pFloat8[i];
+		const bool	perspective = pSpanBuffer->pInt1[i] != 0;
 
 		if (!perspective)
 		{

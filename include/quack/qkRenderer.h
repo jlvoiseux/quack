@@ -1,8 +1,8 @@
 #pragma once
 
 #include "qkTexture.h"
-#include "quack/block/qkSpanBlock.h"
-#include "quack/block/qkTriangleBlock.h"
+#include "quack/buffer/qkSpanBuffer.h"
+#include "quack/buffer/qkVertexBuffer.h"
 
 #include <SDL3/SDL.h>
 
@@ -15,8 +15,10 @@ typedef struct qkRenderer
 	float*		  pZBuffer;
 	int			  width;
 	int			  height;
-	qkBlock		  spanBlock;
-	qkBlock		  triangleBlock;
+	qkBuffer	  spanBuffer;
+	qkBuffer	  vertexBuffer0;
+	qkBuffer	  vertexBuffer1;
+	qkBuffer	  vertexBuffer2;
 } qkRenderer;
 
 int	 qkRendererCreate(int width, int height, qkRenderer* pOut);

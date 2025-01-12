@@ -1,111 +1,104 @@
-#include "quack/block/qkTriangleBlock.h"
+#include "quack/buffer/qkVertexBuffer.h"
 
 #include <float.h>
 #include <math.h>
 
-int qkTriangleBlockCreate(size_t capacity, qkBlock* pTriangleBlock)
+int qkVertexBufferCreate(size_t capacity, qkBuffer* pVertexBuffer)
 {
-	return qkBlockCreate(capacity, pTriangleBlock);
+	return qkBufferCreate(capacity, pVertexBuffer);
 }
 
-void qkTriangleBlockDestroy(qkBlock* pTriangleBlock)
+void qkVertexBufferDestroy(qkBuffer* pVertexBuffer)
 {
-	if (!pTriangleBlock)
+	if (!pVertexBuffer)
 		return;
-	qkBlockDestroy(pTriangleBlock);
+	qkBufferDestroy(pVertexBuffer);
 }
 
-void qkTriangleBlockClear(qkBlock* pTriangleBlock)
+void qkVertexBufferClear(qkBuffer* pVertexBuffer)
 {
-	qkBlockClear(pTriangleBlock);
+	qkBufferClear(pVertexBuffer);
 }
 
-int qkTriangleBlockAdd(qkBlock* pTriangleBlock, const qkVec3* pPos1, const qkVec3* pPos2, const qkVec3* pPos3, float u1, float v1, float u2, float v2, float u3, float v3)
+int qkVertexBufferAdd(qkBuffer* pVertexBuffer, const qkVec3* pPos, float u, float v)
 {
-	if (qkBlockIsFull(pTriangleBlock))
+	if (qkBufferIsFull(pVertexBuffer))
 	{
 		return 0;
 	}
 
-	const size_t idx = pTriangleBlock->count;
+	const size_t idx = pVertexBuffer->count;
 
-	pTriangleBlock->pFloat0[idx]	 = pPos1->x;
-	pTriangleBlock->pFloat0[idx + 1] = pPos2->x;
-	pTriangleBlock->pFloat0[idx + 2] = pPos3->x;
+	pVertexBuffer->pFloat0[idx] = pPos->x;
+	pVertexBuffer->pFloat1[idx] = pPos->y;
+	pVertexBuffer->pFloat2[idx] = pPos->z;
 
-	pTriangleBlock->pFloat1[idx]	 = pPos1->y;
-	pTriangleBlock->pFloat1[idx + 1] = pPos2->y;
-	pTriangleBlock->pFloat1[idx + 2] = pPos3->y;
+	const float invZ = 1.0f / pPos->z;
 
-	pTriangleBlock->pFloat2[idx]	 = pPos1->z;
-	pTriangleBlock->pFloat2[idx + 1] = pPos2->z;
-	pTriangleBlock->pFloat2[idx + 2] = pPos3->z;
+	pVertexBuffer->pFloat3[idx] = u * invZ;
+	pVertexBuffer->pFloat4[idx] = v * invZ;
+	pVertexBuffer->pFloat5[idx] = invZ;
 
-	const float invZ1 = 1.0f / pPos1->z;
-	const float invZ2 = 1.0f / pPos2->z;
-	const float invZ3 = 1.0f / pPos3->z;
-
-	pTriangleBlock->pFloat3[idx]	 = u1 * invZ1;
-	pTriangleBlock->pFloat3[idx + 1] = u2 * invZ2;
-	pTriangleBlock->pFloat3[idx + 2] = u3 * invZ3;
-
-	pTriangleBlock->pFloat4[idx]	 = v1 * invZ1;
-	pTriangleBlock->pFloat4[idx + 1] = v2 * invZ2;
-	pTriangleBlock->pFloat4[idx + 2] = v3 * invZ3;
-
-	pTriangleBlock->pFloat5[idx]	 = invZ1;
-	pTriangleBlock->pFloat5[idx + 1] = invZ2;
-	pTriangleBlock->pFloat5[idx + 2] = invZ3;
-
-	pTriangleBlock->count += 3;
+	pVertexBuffer->count++;
 	return 1;
 }
 
-void qkTriangleBlockProcess(qkBlock* pTriangleBlock, qkBlock* pSpanBlock, int width, int height, uint32_t* pFrameBuffer, float* pZBuffer, const qkTexture* pTex)
+void qkVertexProcess(qkBuffer* pVertexBuffer0, qkBuffer* pVertexBuffer1, qkBuffer* pVertexBuffer2, qkBuffer* pSpanBuffer, int width, int height, uint32_t* pFrameBuffer, float* pZBuffer, const qkTexture* pTex)
 {
-	qkSpanBlockClear(pSpanBlock);
+	qkSpanBufferClear(pSpanBuffer);
 
-	for (size_t i = 0; i < pTriangleBlock->count; i += 3)
+	for (size_t i = 0; i < pVertexBuffer0->count; i++)
 	{
-		const int	 baseIdx = (int)i * 3;
-		const float* pz		 = &pTriangleBlock->pFloat2[baseIdx];
+		float z0 = pVertexBuffer0->pFloat2[i];
+		float z1 = pVertexBuffer1->pFloat2[i];
+		float z2 = pVertexBuffer2->pFloat2[i];
 
-		if (pz[0] < 0.1f || pz[1] < 0.1f || pz[2] < 0.1f)
+		if (z0 < 0.1f || z1 < 0.1f || z2 < 0.1f)
 		{
 			continue;
 		}
 
-		const float* px = &pTriangleBlock->pFloat0[baseIdx];
-		const float* py = &pTriangleBlock->pFloat1[baseIdx];
+		float x0 = pVertexBuffer0->pFloat0[i];
+		float x1 = pVertexBuffer1->pFloat0[i];
+		float x2 = pVertexBuffer2->pFloat0[i];
+		float y0 = pVertexBuffer0->pFloat1[i];
+		float y1 = pVertexBuffer1->pFloat1[i];
+		float y2 = pVertexBuffer2->pFloat1[i];
 
-		const float* puv_u = &pTriangleBlock->pFloat3[baseIdx];
-		const float* puv_v = &pTriangleBlock->pFloat4[baseIdx];
-		const float* puv_z = &pTriangleBlock->pFloat5[baseIdx];
+		float uOverZ0 = pVertexBuffer0->pFloat3[i];
+		float uOverZ1 = pVertexBuffer1->pFloat3[i];
+		float uOverZ2 = pVertexBuffer2->pFloat3[i];
+		float vOverZ0 = pVertexBuffer0->pFloat4[i];
+		float vOverZ1 = pVertexBuffer1->pFloat4[i];
+		float vOverZ2 = pVertexBuffer2->pFloat4[i];
+		float invZ0	  = pVertexBuffer0->pFloat5[i];
+		float invZ1	  = pVertexBuffer1->pFloat5[i];
+		float invZ2	  = pVertexBuffer2->pFloat5[i];
 
-		qkVec3 edge1 = {px[1] - px[0], py[1] - py[0], pz[1] - pz[0]};
-		qkVec3 edge2 = {px[2] - px[0], py[2] - py[0], pz[2] - pz[0]};
+		qkVec3 edge1 = {x1 - x0, y1 - y0, z1 - z0};
+		qkVec3 edge2 = {x2 - x0, y2 - y0, z2 - z0};
 		qkVec3 normal;
 		qkVec3Cross(&edge2, &edge1, &normal);
 
-		if (normal.z <= 0.f)
+		if (normal.z <= 0.0f)
 			continue;
 
 		float normalLength		= qkVec3Length(&normal);
 		float normalizedNormalZ = normal.z / normalLength;
 
-		float maxZ		 = fmaxf(pz[0], fmaxf(pz[1], pz[2]));
-		float minZ		 = fminf(pz[0], fminf(pz[1], pz[2]));
+		float maxZ		 = fmaxf(z0, fmaxf(z1, z2));
+		float minZ		 = fminf(z0, fminf(z1, z2));
 		float zRatio	 = minZ / maxZ;
-		float screenArea = fabsf((px[1] - px[0]) * (py[2] - py[0]) - (px[2] - px[0]) * (py[1] - py[0])) * 0.5f;
+		float screenArea = fabsf((x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)) * 0.5f;
 
 		bool needsPerspective = normalizedNormalZ < 0.95f && zRatio < 0.95f && screenArea > 10000.0f;
 
-		float sortedX[3]	  = {px[0], px[1], px[2]};
-		float sortedY[3]	  = {py[0], py[1], py[2]};
-		float sortedZ[3]	  = {pz[0], pz[1], pz[2]};
-		float sortedUOverZ[3] = {puv_u[0], puv_u[1], puv_u[2]};
-		float sortedVOverZ[3] = {puv_v[0], puv_v[1], puv_v[2]};
-		float sortedInvZ[3]	  = {puv_z[0], puv_z[1], puv_z[2]};
+		float sortedX[3]	  = {x0, x1, x2};
+		float sortedY[3]	  = {y0, y1, y2};
+		float sortedZ[3]	  = {z0, z1, z2};
+		float sortedUOverZ[3] = {uOverZ0, uOverZ1, uOverZ2};
+		float sortedVOverZ[3] = {vOverZ0, vOverZ1, vOverZ2};
+		float sortedInvZ[3]	  = {invZ0, invZ1, invZ2};
 
 		for (int j = 0; j < 2; j++)
 		{
@@ -168,7 +161,6 @@ void qkTriangleBlockProcess(qkBlock* pTriangleBlock, qkBlock* pSpanBlock, int wi
 		int midY   = (int)fminf((float)height - 1, floorf(sortedY[1]));
 		int endY   = (int)fminf((float)height - 1, floorf(sortedY[2]));
 
-		// Top half of triangle
 		for (int y = startY; y <= midY; y++)
 		{
 			float dy = (float)y - sortedY[0];
@@ -185,15 +177,14 @@ void qkTriangleBlockProcess(qkBlock* pTriangleBlock, qkBlock* pSpanBlock, int wi
 			float leftInvZ	  = sortedInvZ[0] + invZSlope1 * dy;
 			float rightInvZ	  = sortedInvZ[0] + invZSlope2 * dy;
 
-			if (!qkSpanBlockAdd(pSpanBlock, y, leftX, rightX, leftZ, rightZ, leftUOverZ, rightUOverZ, leftVOverZ, rightVOverZ, leftInvZ, rightInvZ, needsPerspective, width))
+			if (!qkSpanBufferAdd(pSpanBuffer, y, leftX, rightX, leftZ, rightZ, leftUOverZ, rightUOverZ, leftVOverZ, rightVOverZ, leftInvZ, rightInvZ, needsPerspective, width))
 			{
-				qkSpanBlockProcess(pSpanBlock, width, height, pFrameBuffer, pZBuffer, pTex);
-				qkSpanBlockClear(pSpanBlock);
-				qkSpanBlockAdd(pSpanBlock, y, leftX, rightX, leftZ, rightZ, leftUOverZ, rightUOverZ, leftVOverZ, rightVOverZ, leftInvZ, rightInvZ, needsPerspective, width);
+				qkSpanBufferProcess(pSpanBuffer, width, height, pFrameBuffer, pZBuffer, pTex);
+				qkSpanBufferClear(pSpanBuffer);
+				qkSpanBufferAdd(pSpanBuffer, y, leftX, rightX, leftZ, rightZ, leftUOverZ, rightUOverZ, leftVOverZ, rightVOverZ, leftInvZ, rightInvZ, needsPerspective, width);
 			}
 		}
 
-		// Bottom half of triangle
 		for (int y = midY + 1; y <= endY; y++)
 		{
 			float dy1 = (float)y - sortedY[1];
@@ -211,17 +202,19 @@ void qkTriangleBlockProcess(qkBlock* pTriangleBlock, qkBlock* pSpanBlock, int wi
 			float leftInvZ	  = sortedInvZ[1] + invZSlope3 * dy1;
 			float rightInvZ	  = sortedInvZ[0] + invZSlope2 * dy2;
 
-			if (!qkSpanBlockAdd(pSpanBlock, y, leftX, rightX, leftZ, rightZ, leftUOverZ, rightUOverZ, leftVOverZ, rightVOverZ, leftInvZ, rightInvZ, needsPerspective, width))
+			if (!qkSpanBufferAdd(pSpanBuffer, y, leftX, rightX, leftZ, rightZ, leftUOverZ, rightUOverZ, leftVOverZ, rightVOverZ, leftInvZ, rightInvZ, needsPerspective, width))
 			{
-				qkSpanBlockProcess(pSpanBlock, width, height, pFrameBuffer, pZBuffer, pTex);
-				qkSpanBlockClear(pSpanBlock);
-				qkSpanBlockAdd(pSpanBlock, y, leftX, rightX, leftZ, rightZ, leftUOverZ, rightUOverZ, leftVOverZ, rightVOverZ, leftInvZ, rightInvZ, needsPerspective, width);
+				qkSpanBufferProcess(pSpanBuffer, width, height, pFrameBuffer, pZBuffer, pTex);
+				qkSpanBufferClear(pSpanBuffer);
+				qkSpanBufferAdd(pSpanBuffer, y, leftX, rightX, leftZ, rightZ, leftUOverZ, rightUOverZ, leftVOverZ, rightVOverZ, leftInvZ, rightInvZ, needsPerspective, width);
 			}
 		}
 	}
 
-	if (pSpanBlock->count > 0)
-		qkSpanBlockProcess(pSpanBlock, width, height, pFrameBuffer, pZBuffer, pTex);
+	if (pSpanBuffer->count > 0)
+		qkSpanBufferProcess(pSpanBuffer, width, height, pFrameBuffer, pZBuffer, pTex);
 
-	qkTriangleBlockClear(pTriangleBlock);
+	qkVertexBufferClear(pVertexBuffer0);
+	qkVertexBufferClear(pVertexBuffer1);
+	qkVertexBufferClear(pVertexBuffer2);
 }

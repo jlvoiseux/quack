@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#define QK_SPANS_PER_BLOCK 128
-#define QK_TRIANGLES_PER_BLOCK 64
+#define QK_SPANS_PER_BLOCK 64
+#define QK_VERTEX_PER_BLOCK 64
 
 int qkRendererCreate(int width, int height, qkRenderer* pOut)
 {
@@ -54,7 +54,7 @@ int qkRendererCreate(int width, int height, qkRenderer* pOut)
 		return -5;
 	}
 
-	if (!qkSpanBlockCreate(height, QK_SPANS_PER_BLOCK, &pOut->spanBlock))
+	if (!qkSpanBufferCreate(height, QK_SPANS_PER_BLOCK, &pOut->spanBuffer))
 	{
 		free(pOut->pFrameBuffer);
 		free(pOut->pZBuffer);
@@ -65,9 +65,33 @@ int qkRendererCreate(int width, int height, qkRenderer* pOut)
 		return -6;
 	}
 
-	if (!qkTriangleBlockCreate(QK_TRIANGLES_PER_BLOCK * 3, &pOut->triangleBlock))
+	if (!qkVertexBufferCreate(QK_VERTEX_PER_BLOCK, &pOut->vertexBuffer0))
 	{
-		qkSpanBlockDestroy(&pOut->spanBlock);
+		qkSpanBufferDestroy(&pOut->spanBuffer);
+		free(pOut->pFrameBuffer);
+		free(pOut->pZBuffer);
+		SDL_DestroyTexture(pOut->pFrameTexture);
+		SDL_DestroyRenderer(pOut->pSdlRenderer);
+		SDL_DestroyWindow(pOut->pWindow);
+		SDL_Quit();
+		return -7;
+	}
+
+	if (!qkVertexBufferCreate(QK_VERTEX_PER_BLOCK, &pOut->vertexBuffer1))
+	{
+		qkSpanBufferDestroy(&pOut->spanBuffer);
+		free(pOut->pFrameBuffer);
+		free(pOut->pZBuffer);
+		SDL_DestroyTexture(pOut->pFrameTexture);
+		SDL_DestroyRenderer(pOut->pSdlRenderer);
+		SDL_DestroyWindow(pOut->pWindow);
+		SDL_Quit();
+		return -7;
+	}
+
+	if (!qkVertexBufferCreate(QK_VERTEX_PER_BLOCK, &pOut->vertexBuffer2))
+	{
+		qkSpanBufferDestroy(&pOut->spanBuffer);
 		free(pOut->pFrameBuffer);
 		free(pOut->pZBuffer);
 		SDL_DestroyTexture(pOut->pFrameTexture);
@@ -88,8 +112,10 @@ void qkRendererDestroy(qkRenderer* pRenderer)
 	if (!pRenderer)
 		return;
 
-	qkTriangleBlockDestroy(&pRenderer->triangleBlock);
-	qkSpanBlockDestroy(&pRenderer->spanBlock);
+	qkVertexBufferDestroy(&pRenderer->vertexBuffer0);
+	qkVertexBufferDestroy(&pRenderer->vertexBuffer1);
+	qkVertexBufferDestroy(&pRenderer->vertexBuffer2);
+	qkSpanBufferDestroy(&pRenderer->spanBuffer);
 	free(pRenderer->pFrameBuffer);
 	free(pRenderer->pZBuffer);
 
@@ -110,21 +136,23 @@ void qkRendererClear(qkRenderer* pRenderer)
 	{
 		pRenderer->pZBuffer[i] = FLT_MAX;
 	}
-	qkSpanBlockClear(&pRenderer->spanBlock);
+	qkSpanBufferClear(&pRenderer->spanBuffer);
 }
 
 void qkRendererDrawTriangle(qkRenderer* pRenderer, const qkVec3* pPos1, const qkVec3* pPos2, const qkVec3* pPos3, float u1, float v1, float u2, float v2, float u3, float v3, const qkTexture* pTex)
 {
-	if (!qkTriangleBlockAdd(&pRenderer->triangleBlock, pPos1, pPos2, pPos3, u1, v1, u2, v2, u3, v3))
+	if (!qkVertexBufferAdd(&pRenderer->vertexBuffer0, pPos1, u1, v1) || !qkVertexBufferAdd(&pRenderer->vertexBuffer1, pPos2, u2, v2) || !qkVertexBufferAdd(&pRenderer->vertexBuffer2, pPos3, u3, v3))
 	{
-		qkTriangleBlockProcess(&pRenderer->triangleBlock, &pRenderer->spanBlock, pRenderer->width, pRenderer->height, pRenderer->pFrameBuffer, pRenderer->pZBuffer, pTex);
-		qkTriangleBlockAdd(&pRenderer->triangleBlock, pPos1, pPos2, pPos3, u1, v1, u2, v2, u3, v3);
+		qkVertexProcess(&pRenderer->vertexBuffer0, &pRenderer->vertexBuffer1, &pRenderer->vertexBuffer2, &pRenderer->spanBuffer, pRenderer->width, pRenderer->height, pRenderer->pFrameBuffer, pRenderer->pZBuffer, pTex);
+		qkVertexBufferAdd(&pRenderer->vertexBuffer0, pPos1, u1, v1);
+		qkVertexBufferAdd(&pRenderer->vertexBuffer1, pPos2, u2, v2);
+		qkVertexBufferAdd(&pRenderer->vertexBuffer2, pPos3, u3, v3);
 	}
 }
 
 void qkRendererPresent(qkRenderer* pRenderer, const qkTexture* pTex)
 {
-	qkTriangleBlockProcess(&pRenderer->triangleBlock, &pRenderer->spanBlock, pRenderer->width, pRenderer->height, pRenderer->pFrameBuffer, pRenderer->pZBuffer, pTex);
+	qkVertexProcess(&pRenderer->vertexBuffer0, &pRenderer->vertexBuffer1, &pRenderer->vertexBuffer2, &pRenderer->spanBuffer, pRenderer->width, pRenderer->height, pRenderer->pFrameBuffer, pRenderer->pZBuffer, pTex);
 
 	SDL_UpdateTexture(pRenderer->pFrameTexture, NULL, pRenderer->pFrameBuffer, pRenderer->width * sizeof(uint32_t));
 	SDL_RenderClear(pRenderer->pSdlRenderer);

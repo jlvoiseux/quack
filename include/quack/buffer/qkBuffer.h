@@ -6,7 +6,7 @@
 
 #define QK_BLOCK_ALIGN 32
 
-typedef struct qkBlock
+typedef struct qkBuffer
 {
 	float* pFloat0;
 	float* pFloat1;
@@ -27,12 +27,12 @@ typedef struct qkBlock
 
 	size_t capacity;
 	size_t count;
-} qkBlock;
+} qkBuffer;
 
-void* qkBlockAlignedAlloc(size_t size);
-void  qkBlockAlignedFree(void* ptr);
+void* qkBufferAlignedAlloc(size_t size);
+void  qkBufferAlignedFree(void* ptr);
 
-int	 qkBlockCreate(size_t capacity, qkBlock* pOut);
-void qkBlockDestroy(qkBlock* pBlock);
-void qkBlockClear(qkBlock* pBlock);
-bool qkBlockIsFull(const qkBlock* pBlock);
+int	 qkBufferCreate(size_t capacity, qkBuffer* pOut);
+void qkBufferDestroy(qkBuffer* pBuffer);
+void qkBufferClear(qkBuffer* pBuffer);
+bool qkBufferIsFull(const qkBuffer* pBuffer);
