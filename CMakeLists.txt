@@ -64,10 +64,6 @@ else()
     target_compile_options(quack PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_definitions(quack PRIVATE TRACY_ENABLE)
-endif()
-
 target_compile_definitions(quack PRIVATE SIMD_ENABLE)
 
 set_target_properties(quack
