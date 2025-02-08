@@ -25,7 +25,7 @@ FetchContent_Declare(
 
 FetchContent_GetProperties(stb)
 if(NOT stb_POPULATED)
-    FetchContent_Populate(stb)
+    FetchContent_MakeAvailable(stb)
 endif()
 
 FetchContent_Declare(
@@ -77,6 +77,15 @@ if(WIN32)
             $<TARGET_FILE:SDL3::SDL3>
             ${CMAKE_SOURCE_DIR}/bin
     )
+
+    if(MSVC)
+        # Add Visual C++ runtime DLLs deployment
+        include(InstallRequiredSystemLibraries)
+        add_custom_command(TARGET quack POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} ${CMAKE_SOURCE_DIR}/bin
+        )
+    endif()
+
 endif()
 
 add_custom_command(TARGET quack POST_BUILD
