@@ -2,6 +2,8 @@
 
 #include "quack/math/qkVec3.h"
 
+#include <stddef.h>
+
 typedef struct qkVertex
 {
 	qkVec3 position;
@@ -11,9 +13,9 @@ typedef struct qkVertex
 
 typedef struct qkTriangle
 {
-	int v1;
-	int v2;
-	int v3;
+	size_t v1;
+	size_t v2;
+	size_t v3;
 } qkTriangle;
 
 typedef struct qkModel

@@ -123,7 +123,7 @@ int qkModelLoad(const char* filename, qkModel* out)
 					cgltf_accessor_read_uint(accessor, k + 1, &indices[1], 1);
 					cgltf_accessor_read_uint(accessor, k + 2, &indices[2], 1);
 
-					out->pTriangles[triangleOffset + k / 3].v1 = (int)vertexOffset + indices[0];
+					out->pTriangles[triangleOffset + k / 3].v1 = vertexOffset + indices[0];
 					out->pTriangles[triangleOffset + k / 3].v2 = vertexOffset + indices[1];
 					out->pTriangles[triangleOffset + k / 3].v3 = vertexOffset + indices[2];
 				}
