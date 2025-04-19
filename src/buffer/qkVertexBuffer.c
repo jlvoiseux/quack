@@ -29,12 +29,15 @@ int qkVertexBufferAdd(qkBuffer* pVertexBuffer, const qkVec3* pPos, float u, floa
 
 	const size_t idx = pVertexBuffer->count;
 
+	// Position coordinates
 	pVertexBuffer->pFloat0[idx] = pPos->x;
 	pVertexBuffer->pFloat1[idx] = pPos->y;
 	pVertexBuffer->pFloat2[idx] = pPos->z;
 
+	// Perspective division factor
 	const float invZ = 1.0f / pPos->z;
 
+	// Perspective-adjusted texture coordinates and inverse Z
 	pVertexBuffer->pFloat3[idx] = u * invZ;
 	pVertexBuffer->pFloat4[idx] = v * invZ;
 	pVertexBuffer->pFloat5[idx] = invZ;
@@ -53,6 +56,7 @@ void qkVertexProcess(qkBuffer* pVertexBuffer0, qkBuffer* pVertexBuffer1, qkBuffe
 		float z1 = pVertexBuffer1->pFloat2[i];
 		float z2 = pVertexBuffer2->pFloat2[i];
 
+		// Near plane culling - skip triangles with vertices too close to camera
 		if (z0 < 0.1f || z1 < 0.1f || z2 < 0.1f)
 		{
 			continue;
@@ -75,11 +79,13 @@ void qkVertexProcess(qkBuffer* pVertexBuffer0, qkBuffer* pVertexBuffer1, qkBuffe
 		float invZ1	  = pVertexBuffer1->pFloat5[i];
 		float invZ2	  = pVertexBuffer2->pFloat5[i];
 
+		// Calculate triangle face normal for backface culling
 		qkVec3 edge1 = {x1 - x0, y1 - y0, z1 - z0};
 		qkVec3 edge2 = {x2 - x0, y2 - y0, z2 - z0};
 		qkVec3 normal;
 		qkVec3Cross(&edge2, &edge1, &normal);
 
+		// Backface culling - skip triangles facing away from camera
 		if (normal.z <= 0.0f)
 			continue;
 
@@ -91,7 +97,13 @@ void qkVertexProcess(qkBuffer* pVertexBuffer0, qkBuffer* pVertexBuffer1, qkBuffe
 		float zRatio	 = minZ / maxZ;
 		float screenArea = fabsf((x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)) * 0.5f;
 
+		// Enable perspective correction for triangles that are:
+		// - Not facing directly at camera
+		// - Have significant depth variance
+		// - Are large enough on screen
 		bool needsPerspective = normalizedNormalZ < 0.95f && zRatio < 0.95f && screenArea > 10000.0f;
+
+		// Bubble sort vertices by Y coordinate
 
 		float sortedX[3]	  = {x0, x1, x2};
 		float sortedY[3]	  = {y0, y1, y2};
@@ -99,7 +111,6 @@ void qkVertexProcess(qkBuffer* pVertexBuffer0, qkBuffer* pVertexBuffer1, qkBuffe
 		float sortedUOverZ[3] = {uOverZ0, uOverZ1, uOverZ2};
 		float sortedVOverZ[3] = {vOverZ0, vOverZ1, vOverZ2};
 		float sortedInvZ[3]	  = {invZ0, invZ1, invZ2};
-
 		for (int j = 0; j < 2; j++)
 		{
 			for (int k = j + 1; k < 3; k++)
@@ -130,13 +141,16 @@ void qkVertexProcess(qkBuffer* pVertexBuffer0, qkBuffer* pVertexBuffer1, qkBuffe
 			}
 		}
 
+		// Height differences between vertices
 		float yDiff12 = sortedY[1] - sortedY[0];
 		float yDiff13 = sortedY[2] - sortedY[0];
 		float yDiff23 = sortedY[2] - sortedY[1];
 
+		// Skip triangles with negligible height
 		if (yDiff13 < 0.5f)
 			continue;
 
+		// Slopes for edge interpolation
 		float slope1 = (fabsf(yDiff12) < FLT_EPSILON) ? 0.0f : (sortedX[1] - sortedX[0]) / yDiff12;
 		float slope2 = (fabsf(yDiff13) < FLT_EPSILON) ? 0.0f : (sortedX[2] - sortedX[0]) / yDiff13;
 		float slope3 = (fabsf(yDiff23) < FLT_EPSILON) ? 0.0f : (sortedX[2] - sortedX[1]) / yDiff23;
@@ -157,14 +171,17 @@ void qkVertexProcess(qkBuffer* pVertexBuffer0, qkBuffer* pVertexBuffer1, qkBuffe
 		float invZSlope2 = (fabsf(yDiff13) < FLT_EPSILON) ? 0.0f : (sortedInvZ[2] - sortedInvZ[0]) / yDiff13;
 		float invZSlope3 = (fabsf(yDiff23) < FLT_EPSILON) ? 0.0f : (sortedInvZ[2] - sortedInvZ[1]) / yDiff23;
 
+		// Scan line Y ranges, clipped to screen boundaries
 		int startY = (int)fmaxf(0.0f, ceilf(sortedY[0]));
 		int midY   = (int)fminf((float)height - 1, floorf(sortedY[1]));
 		int endY   = (int)fminf((float)height - 1, floorf(sortedY[2]));
 
+		// Top half of triangle
 		for (int y = startY; y <= midY; y++)
 		{
 			float dy = (float)y - sortedY[0];
 
+			// Calculate X bounds and interpolated values for this scanline
 			float leftX	 = sortedX[0] + slope1 * dy;
 			float rightX = sortedX[0] + slope2 * dy;
 			float leftZ	 = sortedZ[0] + zSlope1 * dy;
@@ -177,6 +194,7 @@ void qkVertexProcess(qkBuffer* pVertexBuffer0, qkBuffer* pVertexBuffer1, qkBuffe
 			float leftInvZ	  = sortedInvZ[0] + invZSlope1 * dy;
 			float rightInvZ	  = sortedInvZ[0] + invZSlope2 * dy;
 
+			// Add scan line to buffer, process if buffer is full
 			if (!qkSpanBufferAdd(pSpanBuffer, y, leftX, rightX, leftZ, rightZ, leftUOverZ, rightUOverZ, leftVOverZ, rightVOverZ, leftInvZ, rightInvZ, needsPerspective, width))
 			{
 #ifdef SIMD_ENABLE
@@ -189,6 +207,7 @@ void qkVertexProcess(qkBuffer* pVertexBuffer0, qkBuffer* pVertexBuffer1, qkBuffe
 			}
 		}
 
+		// Bottom half of triangle
 		for (int y = midY + 1; y <= endY; y++)
 		{
 			float dy1 = (float)y - sortedY[1];

@@ -32,6 +32,7 @@ int qkSpanBufferAdd(qkBuffer* pSpanBuffer, int y, float startX, float endX, floa
 		return 0;
 	}
 
+	// Ensure startX < endX by swapping if necessary
 	if (startX > endX)
 	{
 		float temp;
@@ -56,6 +57,7 @@ int qkSpanBufferAdd(qkBuffer* pSpanBuffer, int y, float startX, float endX, floa
 		endInvZ	  = temp;
 	}
 
+	// Clip span to screen boundaries
 	int startXBounded = (int)fmaxf(0.0f, ceilf(startX));
 	int endXBounded	  = (int)fminf((float)width - 1, floorf(endX));
 
@@ -66,14 +68,17 @@ int qkSpanBufferAdd(qkBuffer* pSpanBuffer, int y, float startX, float endX, floa
 
 	size_t idx = pSpanBuffer->count;
 
+	// Span coordinates
 	pSpanBuffer->pShort0[idx] = (int16_t)startXBounded;
 	pSpanBuffer->pShort1[idx] = (int16_t)endXBounded;
 	pSpanBuffer->pShort2[idx] = (int16_t)y;
 
+	// Z values for depth testing
 	pSpanBuffer->pFloat0[idx] = startZ;
 	pSpanBuffer->pFloat1[idx] = endZ;
 	pSpanBuffer->pFloat2[idx] = fminf(startZ, endZ);
 
+	// Texture coordinate interpolation values
 	pSpanBuffer->pFloat3[idx] = startUOverZ;
 	pSpanBuffer->pFloat4[idx] = startVOverZ;
 	pSpanBuffer->pFloat5[idx] = startInvZ;
@@ -81,12 +86,14 @@ int qkSpanBufferAdd(qkBuffer* pSpanBuffer, int y, float startX, float endX, floa
 	pSpanBuffer->pFloat7[idx] = endVOverZ;
 	pSpanBuffer->pFloat8[idx] = endInvZ;
 
+	// Perspective flag
 	pSpanBuffer->pInt1[idx] = perspective ? 1 : 0;
 	pSpanBuffer->count++;
 
 	return 1;
 }
 
+// Process all spans in the buffer and render them to the framebuffer
 void qkSpanBufferProcess(qkBuffer* pSpanBuffer, int width, int height, uint32_t* pFrameBuffer, float* pZBuffer, const qkTexture* pTex)
 {
 	for (size_t i = 0; i < pSpanBuffer->count; i++)
@@ -95,6 +102,7 @@ void qkSpanBufferProcess(qkBuffer* pSpanBuffer, int width, int height, uint32_t*
 		const int endX	 = pSpanBuffer->pShort1[i];
 		const int y		 = pSpanBuffer->pShort2[i];
 
+		// Skip invalid spans
 		if (startX < 0 || endX >= width || startX > endX || y < 0 || y >= height)
 			continue;
 
@@ -115,6 +123,7 @@ void qkSpanBufferProcess(qkBuffer* pSpanBuffer, int width, int height, uint32_t*
 
 		if (!perspective)
 		{
+			// Affine texture mapping
 			float u		= startUOverZ / startInvZ;
 			float v		= startVOverZ / startInvZ;
 			float uStep = ((endUOverZ / endInvZ) - u) / (float)spanWidth;
@@ -122,6 +131,7 @@ void qkSpanBufferProcess(qkBuffer* pSpanBuffer, int width, int height, uint32_t*
 
 			for (int x = 0; x < spanWidth; x++)
 			{
+				// Depth test - only draw if closer than existing pixel
 				if (z > 0.0f && z < pZBuffer[pixelOffset])
 				{
 					pFrameBuffer[pixelOffset] = qkTextureSample(pTex, u, v);
@@ -135,6 +145,8 @@ void qkSpanBufferProcess(qkBuffer* pSpanBuffer, int width, int height, uint32_t*
 		}
 		else
 		{
+			// Perspective-correct texture mapping
+			// Interpolate u/z, v/z, and 1/z, then divide to get correct u,v at each pixel
 			const float uOverZStep = (endUOverZ - startUOverZ) / (float)spanWidth;
 			const float vOverZStep = (endVOverZ - startVOverZ) / (float)spanWidth;
 			const float invZStep   = (endInvZ - startInvZ) / (float)spanWidth;
@@ -164,6 +176,7 @@ void qkSpanBufferProcess(qkBuffer* pSpanBuffer, int width, int height, uint32_t*
 }
 
 #ifdef SIMD_ENABLE
+// SIMD-optimized version of span processing - processes 8 pixels at once
 void qkSpanBufferProcess8(qkBuffer* pSpanBuffer, int width, int height, uint32_t* pFrameBuffer, float* pZBuffer, const qkTexture* pTex)
 {
 	for (size_t i = 0; i < pSpanBuffer->count; i++)
@@ -243,15 +256,20 @@ void qkSpanBufferProcess8(qkBuffer* pSpanBuffer, int width, int height, uint32_t
 			invZStepVec	  = _mm256_set1_ps(invZStep * 8.0f);
 		}
 
+		// Process span in chunks of 8 pixels
 		for (int x = 0; x < spanWidth; x += 8)
 		{
 			const int remainingPixels = spanWidth - x;
 			if (remainingPixels < 8)
 				break;
 
+			// Z-buffer values for 8 pixels
 			const __m256 zBuffer = _mm256_load_ps(&pZBuffer[pixelOffset + x]);
+
+			// Mask for pixels that pass the depth test (z > 0 && z < zBuffer)
 			const __m256 mask	 = _mm256_and_ps(_mm256_cmp_ps(zVec, _mm256_set1_ps(0.0f), _CMP_GT_OQ), _mm256_cmp_ps(zVec, zBuffer, _CMP_LT_OQ));
 
+			// Check if any pixels need to be drawn
 			if (_mm256_movemask_ps(mask))
 			{
 				__m256i colors;
@@ -267,6 +285,7 @@ void qkSpanBufferProcess8(qkBuffer* pSpanBuffer, int width, int height, uint32_t
 					qkTextureSample8(pTex, uVecNp, vVecNp, &colors);
 				}
 
+				// Masked update to framebuffer and z-buffer
 				__m256i* pDest	  = (__m256i*)&pFrameBuffer[pixelOffset + x];
 				__m256i	 existing = _mm256_load_si256(pDest);
 				__m256i	 masked	  = _mm256_blendv_epi8(existing, colors, _mm256_castps_si256(mask));
@@ -288,6 +307,7 @@ void qkSpanBufferProcess8(qkBuffer* pSpanBuffer, int width, int height, uint32_t
 			}
 		}
 
+		// Remaining pixels (less than 8) using scalar code
 		const int remainingStart = (spanWidth / 8) * 8;
 		if (remainingStart < spanWidth)
 		{
