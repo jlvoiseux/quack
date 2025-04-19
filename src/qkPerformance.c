@@ -28,6 +28,7 @@ void qkPerformanceUpdate(qkPerformance* perf)
 			perf->frameCount	   = 0;
 			perf->averageFrameTime = 0;
 			printf("Warm-up complete. Starting performance measurements.\n");
+			fflush(stdout);
 			perf->lastStatsOutput = currentTime;
 		}
 		return;
@@ -40,6 +41,7 @@ void qkPerformanceUpdate(qkPerformance* perf)
 	{
 		const float avgFps = perf->averageFrameTime > 0 ? 1000.0f / perf->averageFrameTime : 0.0f;
 		printf("Stats | Avg: %.4f ms (%.4f FPS) over %d frames, Curr: %zu ms\n", perf->averageFrameTime, avgFps, perf->frameCount, perf->frameTime);
+		fflush(stdout);
 		perf->lastStatsOutput = currentTime;
 	}
 }

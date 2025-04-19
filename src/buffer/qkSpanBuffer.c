@@ -185,10 +185,16 @@ void qkSpanBufferProcess8(qkBuffer* pSpanBuffer, int width, int height, uint32_t
 		__m256		 zVec	  = _mm256_setr_ps(startZ, startZ + zStep, startZ + zStep * 2, startZ + zStep * 3, startZ + zStep * 4, startZ + zStep * 5, startZ + zStep * 6, startZ + zStep * 7);
 		const __m256 zStepVec = _mm256_set1_ps(zStep * 8.0f);
 
-		__m256 uVec, vVec;
-		__m256 uStepVec, vStepVec;
-		__m256 uOverZVec, vOverZVec, invZVec;
-		__m256 uOverZStepVec, vOverZStepVec, invZStepVec;
+		__m256 uVec = _mm256_setzero_ps();
+		__m256 vVec = _mm256_setzero_ps();
+		__m256 uStepVec = _mm256_setzero_ps();
+		__m256 vStepVec = _mm256_setzero_ps();
+		__m256 uOverZVec = _mm256_setzero_ps();
+		__m256 vOverZVec = _mm256_setzero_ps();
+		__m256 invZVec = _mm256_setzero_ps();
+		__m256 uOverZStepVec = _mm256_setzero_ps();
+		__m256 vOverZStepVec = _mm256_setzero_ps();
+		__m256 invZStepVec = _mm256_setzero_ps();
 
 		const float u	  = !perspective ? pSpanBuffer->pFloat3[i] / pSpanBuffer->pFloat5[i] : 0.0f;
 		const float v	  = !perspective ? pSpanBuffer->pFloat4[i] / pSpanBuffer->pFloat5[i] : 0.0f;
@@ -256,9 +262,9 @@ void qkSpanBufferProcess8(qkBuffer* pSpanBuffer, int width, int height, uint32_t
 				else
 				{
 					const __m256 invZRecip = _mm256_rcp_ps(invZVec);
-					const __m256 uVec	   = _mm256_mul_ps(uOverZVec, invZRecip);
-					const __m256 vVec	   = _mm256_mul_ps(vOverZVec, invZRecip);
-					qkTextureSample8(pTex, uVec, vVec, &colors);
+					const __m256 uVecNp	   = _mm256_mul_ps(uOverZVec, invZRecip);
+					const __m256 vVecNp	   = _mm256_mul_ps(vOverZVec, invZRecip);
+					qkTextureSample8(pTex, uVecNp, vVecNp, &colors);
 				}
 
 				__m256i* pDest	  = (__m256i*)&pFrameBuffer[pixelOffset + x];
